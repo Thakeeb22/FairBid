@@ -1,4 +1,4 @@
-# MyAuctionProject
+# FairBid
 
 A decentralized auction platform built with **React frontend**, **Node.js backend**, and **Starknet smart contracts**. Users can commit sealed bids, reveal them, and track the highest bids securely on-chain.
 
