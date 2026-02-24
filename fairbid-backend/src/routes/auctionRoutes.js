@@ -6,18 +6,13 @@ const {
   getSingleAuction,
   getFairnessMetrics,
 } = require("../controllers/auctionController");
-/**
- * Public route:
-*/
+
+// Public routes
 router.post("/create", createAuction);
-/**
- * Public routes
-*/
 router.get("/", getAuctions);
-router.get("/:auctionId", getSingleAuction)
-/**
- * transparency / fairness dashboard
-*/
+
+// Dynamic routes: specific first, generic last
 router.get("/:auctionId/fairness", getFairnessMetrics);
+router.get("/:auctionId", getSingleAuction);
 
 module.exports = router;
