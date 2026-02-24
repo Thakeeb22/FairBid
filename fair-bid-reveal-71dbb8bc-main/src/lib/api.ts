@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE_URL = "https://fairbid-backend.onrender.com"; // adjust if deployed
+const BASE_URL = "https://fairbid-backend.onrender.com/api"; // adjust if deployed
 
 // Auctions
 export const getAuctions = async () => {
