@@ -4,30 +4,50 @@ import AuctionCard from "@/components/auction/AuctionCard";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Plus, TrendingUp, Gavel, Star } from "lucide-react";
-import { getAuctions } from "@/lib/api"; // ✅ API
+import { getAuctions } from "@/lib/api";
 
+// Tabs
 const tabs = ["Active Auctions", "My Bids", "Created Auctions"];
 
+// Framer motion container variants
 const containerVariants = {
   hidden: {},
   show: { transition: { staggerChildren: 0.06 } },
 };
 
+// TypeScript interface for auctions
+interface Auction {
+  _id: string;             // MongoDB ID
+  title: string;
+  status: string;          // e.g., "active", "finalized"
+  creatorWallet: string;   // matches WALLET
+  bids?: { bidderWallet: string; amount: number }[]; // optional bids
+  myBid?: boolean;         // computed for frontend convenience
+  [key: string]: any;      // any additional fields
+}
+
 const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
-  const [auctions, setAuctions] = useState<any[]>([]);
+  const [auctions, setAuctions] = useState<Auction[]>([]);
   const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
 
-  const WALLET = "0xYourWallet"; // 🔁 replace later with Starknet wallet
+  const WALLET = "0xYourWallet"; // 🔁 replace with actual Starknet wallet
 
-  // ✅ Fetch auctions
+  // Fetch auctions on mount
   useEffect(() => {
     const fetchAuctions = async () => {
       try {
-        const data = await getAuctions();
-        setAuctions(data);
+        const data: Auction[] = await getAuctions();
+
+        // Compute `myBid` for each auction
+        const enriched = data.map((a) => ({
+          ...a,
+          myBid: a.bids?.some((b) => b.bidderWallet === WALLET) ?? false,
+        }));
+
+        setAuctions(enriched);
       } catch (err) {
         console.error("Failed to fetch auctions:", err);
       } finally {
@@ -38,21 +58,21 @@ const Dashboard: React.FC = () => {
     fetchAuctions();
   }, []);
 
-  // ✅ Tab filtering
+  // Filter auctions based on active tab
   const filteredAuctions = (() => {
     switch (activeTab) {
-      case 0:
+      case 0: // Active Auctions
         return auctions.filter((a) => a.status !== "finalized");
-      case 1:
-        return auctions.filter((a) => a.myBid === true); // backend should return this
-      case 2:
-        return auctions.filter((a) => a.creator === WALLET);
+      case 1: // Auctions where current wallet has bid
+        return auctions.filter((a) => a.myBid);
+      case 2: // Auctions created by current wallet
+        return auctions.filter((a) => a.creatorWallet === WALLET);
       default:
         return auctions;
     }
   })();
 
-  // ✅ Dynamic stats
+  // Dashboard stats
   const stats = [
     {
       label: "Active Auctions",
@@ -85,7 +105,9 @@ const Dashboard: React.FC = () => {
           className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
         >
           <div>
-            <p className="font-body text-sm text-muted-foreground mb-1">Welcome back,</p>
+            <p className="font-body text-sm text-muted-foreground mb-1">
+              Welcome back,
+            </p>
             <h1 className="font-heading text-2xl sm:text-3xl font-bold text-foreground">
               {WALLET} 👋
             </h1>
@@ -150,7 +172,7 @@ const Dashboard: React.FC = () => {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           >
             {filteredAuctions.map((auction, i) => (
-              <AuctionCard key={auction.id} auction={auction} index={i} />
+              <AuctionCard key={auction._id} auction={auction} index={i} />
             ))}
           </motion.div>
         )}
