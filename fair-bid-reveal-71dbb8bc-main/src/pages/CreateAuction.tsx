@@ -81,8 +81,8 @@ const CreateAuction: React.FC = () => {
         title: form.title,
         description: form.description,
         startingPrice: parseFloat(form.startingPrice),
-        duration,
-        revealDuration,
+        duration: Math.ceil(duration),
+        revealDuration: Math.ceil(revealDuration),
         creatorWallet: "0xYourWallet", // 🔥 replace with Starknet wallet later
       };
 
