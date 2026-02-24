@@ -1,0 +1,24 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-error.log
+dist/
+.env
+
+# React frontend build
+frontend/build/
+frontend/node_modules/
+
+# Backend node modules and build
+backend/node_modules/
+backend/dist/
+
+# Starknet artifacts
+starknet/.cairo_contracts/
+starknet/build/
+starknet/__pycache__/
+starknet/.venv/
+
+# System files
+.DS_Store
+Thumbs.db

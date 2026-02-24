@@ -1,0 +1,186 @@
+[
+  {
+    "type": "impl",
+    "name": "FairBidImpl",
+    "interface_name": "fairbid::IFairBid"
+  },
+  {
+    "type": "struct",
+    "name": "core::integer::u256",
+    "members": [
+      { "name": "low", "type": "core::integer::u128" },
+      { "name": "high", "type": "core::integer::u128" }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "fairbid::IFairBid",
+    "items": [
+      {
+        "type": "function",
+        "name": "commit_bid",
+        "inputs": [
+          { "name": "commitment", "type": "core::felt252" },
+          { "name": "deposit", "type": "core::integer::u256" }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "reveal_bid",
+        "inputs": [
+          { "name": "amount", "type": "core::integer::u256" },
+          { "name": "secret", "type": "core::felt252" }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "start_reveal_phase",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "finalize_auction",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "get_phase",
+        "inputs": [],
+        "outputs": [{ "type": "core::integer::u8" }],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_highest_bid",
+        "inputs": [],
+        "outputs": [{ "type": "core::integer::u256" }],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_highest_bidder",
+        "inputs": [],
+        "outputs": [
+          { "type": "core::starknet::contract_address::ContractAddress" }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_commitment",
+        "inputs": [
+          {
+            "name": "bidder",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [{ "type": "core::felt252" }],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_revealed_bid",
+        "inputs": [
+          {
+            "name": "bidder",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [{ "type": "core::integer::u256" }],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_deposit",
+        "inputs": [
+          {
+            "name": "bidder",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [{ "type": "core::integer::u256" }],
+        "state_mutability": "view"
+      }
+    ]
+  },
+  {
+    "type": "constructor",
+    "name": "constructor",
+    "inputs": [
+      {
+        "name": "token_address",
+        "type": "core::starknet::contract_address::ContractAddress"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "fairbid::FairBid::BidCommitted",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "bidder",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      { "name": "commitment", "type": "core::felt252", "kind": "data" },
+      { "name": "deposit", "type": "core::integer::u256", "kind": "data" }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "fairbid::FairBid::BidRevealed",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "bidder",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      { "name": "amount", "type": "core::integer::u256", "kind": "data" }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "fairbid::FairBid::AuctionFinalized",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "winner",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      { "name": "final_bid", "type": "core::integer::u256", "kind": "data" }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "fairbid::FairBid::Event",
+    "kind": "enum",
+    "variants": [
+      {
+        "name": "BidCommitted",
+        "type": "fairbid::FairBid::BidCommitted",
+        "kind": "nested"
+      },
+      {
+        "name": "BidRevealed",
+        "type": "fairbid::FairBid::BidRevealed",
+        "kind": "nested"
+      },
+      {
+        "name": "AuctionFinalized",
+        "type": "fairbid::FairBid::AuctionFinalized",
+        "kind": "nested"
+      }
+    ]
+  }
+]
