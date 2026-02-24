@@ -7,12 +7,12 @@ const {
   getFairnessMetrics,
 } = require("../controllers/auctionController");
 
-// Public routes
+// ✅ Static / specific routes first
 router.post("/create", createAuction);
-router.get("/", getAuctions);
-
-// Dynamic routes: specific first, generic last
 router.get("/:auctionId/fairness", getFairnessMetrics);
+
+// ✅ General routes last
+router.get("/", getAuctions);
 router.get("/:auctionId", getSingleAuction);
 
 module.exports = router;
