@@ -35,12 +35,16 @@ const CreateAuction: React.FC = () => {
 
   const validate = (): FormErrors => {
     const errs: FormErrors = {};
-    if (!form.title.trim() || form.title.length < 3) errs.title = "Title must be at least 3 characters.";
-    if (!form.description.trim() || form.description.length < 10) errs.description = "Description must be at least 10 characters.";
+    if (!form.title.trim() || form.title.length < 3)
+      errs.title = "Title must be at least 3 characters.";
+    if (!form.description.trim() || form.description.length < 10)
+      errs.description = "Description must be at least 10 characters.";
     const price = parseFloat(form.startingPrice);
-    if (isNaN(price) || price <= 0) errs.startingPrice = "Starting price must be a positive number.";
+    if (isNaN(price) || price <= 0)
+      errs.startingPrice = "Starting price must be a positive number.";
     if (!form.commitDeadline) errs.commitDeadline = "Bid deadline is required.";
-    if (!form.revealDeadline) errs.revealDeadline = "Reveal deadline is required.";
+    if (!form.revealDeadline)
+      errs.revealDeadline = "Reveal deadline is required.";
     if (form.commitDeadline && form.revealDeadline) {
       if (new Date(form.revealDeadline) <= new Date(form.commitDeadline)) {
         errs.revealDeadline = "Reveal deadline must be after bid deadline.";
@@ -59,24 +63,50 @@ const CreateAuction: React.FC = () => {
 
     setLoading(true);
     try {
-      await createAuction({
+      const now = new Date();
+
+      const commitDate = new Date(form.commitDeadline);
+      const revealDate = new Date(form.revealDeadline);
+
+      // ⏱ Convert to hours
+      const duration = Math.ceil(
+        (commitDate.getTime() - now.getTime()) / (1000 * 60 * 60),
+      );
+
+      const revealDuration = Math.ceil(
+        (revealDate.getTime() - commitDate.getTime()) / (1000 * 60 * 60),
+      );
+
+      const payload = {
         title: form.title,
         description: form.description,
         startingPrice: parseFloat(form.startingPrice),
-        commitDeadline: new Date(form.commitDeadline).toISOString(),
-        revealDeadline: new Date(form.revealDeadline).toISOString(),
-      });
+        duration,
+        revealDuration,
+        creatorWallet: "0xYourWallet", // 🔥 replace with Starknet wallet later
+      };
+
+      console.log("Sending payload:", payload); // debug
+
+      await createAuction(payload);
+
       setSubmitted(true);
-      setTimeout(() => navigate("/dashboard"), 2000); // optional redirect after success
+      setTimeout(() => navigate("/dashboard"), 2000);
     } catch (err) {
       console.error("Failed to create auction:", err);
-      alert("Failed to create auction. Please try again."); // simple error feedback
+      alert("Failed to create auction. Check console.");
     } finally {
       setLoading(false);
     }
   };
 
-  const field = (key: keyof FormData, label: string, type: string = "text", placeholder?: string, hint?: string) => (
+  const field = (
+    key: keyof FormData,
+    label: string,
+    type: string = "text",
+    placeholder?: string,
+    hint?: string,
+  ) => (
     <div className="space-y-1.5">
       <label className="font-heading text-sm font-semibold text-foreground flex items-center gap-2">
         {label}
@@ -109,7 +139,9 @@ const CreateAuction: React.FC = () => {
           onChange={(e) => setForm({ ...form, [key]: e.target.value })}
         />
       )}
-      {errors[key] && <p className="text-xs font-body text-destructive">{errors[key]}</p>}
+      {errors[key] && (
+        <p className="text-xs font-body text-destructive">{errors[key]}</p>
+      )}
     </div>
   );
 
@@ -120,7 +152,9 @@ const CreateAuction: React.FC = () => {
           <div className="w-20 h-20 rounded-2xl bg-gradient-gold mx-auto flex items-center justify-center mb-6 gold-glow">
             <Rocket size={36} className="text-accent-foreground" />
           </div>
-          <h2 className="font-heading text-2xl font-bold text-foreground mb-2">Auction Created!</h2>
+          <h2 className="font-heading text-2xl font-bold text-foreground mb-2">
+            Auction Created!
+          </h2>
           <p className="font-body text-muted-foreground">
             Your sealed-bid auction is live on Starknet. Redirecting...
           </p>
@@ -141,36 +175,72 @@ const CreateAuction: React.FC = () => {
 
         <div className="card-glass p-6 sm:p-8">
           <div className="mb-8">
-            <h1 className="font-heading text-2xl font-bold text-foreground mb-1">Create Auction</h1>
+            <h1 className="font-heading text-2xl font-bold text-foreground mb-1">
+              Create Auction
+            </h1>
             <p className="font-body text-sm text-muted-foreground">
               Deploy a sealed-bid auction smart contract on Starknet.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {field("title", "Auction Title", "text", "e.g. Circuit Genesis #001")}
-            {field("description", "Description", "textarea", "Describe your NFT and auction terms...")}
+            {field(
+              "title",
+              "Auction Title",
+              "text",
+              "e.g. Circuit Genesis #001",
+            )}
+            {field(
+              "description",
+              "Description",
+              "textarea",
+              "Describe your NFT and auction terms...",
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {field("startingPrice", "Starting Price (STRK)", "number", "0.00", "Minimum bid accepted")}
+              {field(
+                "startingPrice",
+                "Starting Price (STRK)",
+                "number",
+                "0.00",
+                "Minimum bid accepted",
+              )}
               <div />
             </div>
 
             <div className="p-4 rounded-xl border border-border bg-muted/50 space-y-1">
-              <p className="font-heading text-xs font-semibold text-muted-foreground uppercase tracking-wider">Auction Timeline</p>
+              <p className="font-heading text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Auction Timeline
+              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {field("commitDeadline", "Bid Deadline", "datetime-local", undefined, "Last time users can submit sealed bids")}
-              {field("revealDeadline", "Reveal Deadline", "datetime-local", undefined, "Last time users can reveal their bids")}
+              {field(
+                "commitDeadline",
+                "Bid Deadline",
+                "datetime-local",
+                undefined,
+                "Last time users can submit sealed bids",
+              )}
+              {field(
+                "revealDeadline",
+                "Reveal Deadline",
+                "datetime-local",
+                undefined,
+                "Last time users can reveal their bids",
+              )}
             </div>
 
             <div className="flex gap-3 p-4 rounded-xl border border-accent-muted bg-accent/5">
               <Info size={16} className="text-gold mt-0.5 shrink-0" />
               <div className="space-y-1">
-                <p className="font-heading text-sm font-semibold text-foreground">How commit-reveal works</p>
+                <p className="font-heading text-sm font-semibold text-foreground">
+                  How commit-reveal works
+                </p>
                 <p className="font-body text-xs text-muted-foreground leading-relaxed">
-                  Bidders submit a cryptographic hash of their bid during the commit phase. After the deadline, they reveal the actual bid. This prevents frontrunning and ensures a fair auction.
+                  Bidders submit a cryptographic hash of their bid during the
+                  commit phase. After the deadline, they reveal the actual bid.
+                  This prevents frontrunning and ensures a fair auction.
                 </p>
               </div>
             </div>
