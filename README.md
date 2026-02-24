@@ -6,7 +6,7 @@ A decentralized auction platform built with **React frontend**, **Node.js backen
 
 ## 📁 Folder Structure
 
-## MyAuctionProject/ ├─ frontend/ # React frontend ├─ backend/ # Node.js / Express API ├─ starknet/ # Starknet Cairo smart contracts ├─ .gitignore ├─ README.md └─ LICENSE
+## FairBid/ ├─ frontend/ # React frontend ├─ backend/ # Node.js / Express API ├─ starknet/ # Starknet Cairo smart contracts ├─ .gitignore ├─ README.md └─ LICENSE
 
 ## ⚡ Features
 
@@ -23,8 +23,8 @@ A decentralized auction platform built with **React frontend**, **Node.js backen
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/yourusername/MyAuctionProject.git
-cd MyAuctionProject
+git clone https://github.com/Thakeeb22/FairBid.git
+cd FairBid
 2. Backend Setup
  cd backend
 npm install
