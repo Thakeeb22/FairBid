@@ -8,14 +8,14 @@ const crypto = require("crypto");
 // -----------------------------
 const createAuction = async (req, res) => {
   try {
-    const { title, description, startingPrice, duration, revealDuration, creatorWallet } = req.body;
+    const { title, description, startingPrice, commitDeadline, revealDeadline, creatorWallet } = req.body;
 
-    if (!title || !startingPrice || !duration || !revealDuration || !creatorWallet) {
+    if (!title || !startingPrice || !commitDeadline || !revealDeadline || !creatorWallet) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const endtime = new Date(Date.now() + duration * 60 * 60 * 1000);
-    const revealTime = new Date(endtime.getTime() + revealDuration * 60 * 60 * 1000);
+    const endtime = new Date(commitDeadline);
+    const revealTime = new Date(revealDeadline);
 
     const auction = new Auction({
       title,
@@ -24,7 +24,7 @@ const createAuction = async (req, res) => {
       creatorWallet,
       endtime,
       revealTime,
-      status: "bidding", // initial status
+      status: "bidding",
     });
 
     await auction.save();
@@ -35,7 +35,6 @@ const createAuction = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 // -----------------------------
 // Get All Auctions
 // -----------------------------
