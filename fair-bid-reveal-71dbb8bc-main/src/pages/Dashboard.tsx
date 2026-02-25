@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import PageLayout from "@/components/layout/PageLayout";
-import AuctionCard from "@/components/auction/AuctionCard";
+import AuctionCard, { Auction, AuctionPhase } from "@/components/auction/AuctionCard";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Plus, TrendingUp, Gavel, Star } from "lucide-react";
-import { getAuctions } from "@/lib/api";
+import { getAuctions } from "@/lib/api"; // your backend API call
 
 const tabs = ["Active Auctions", "My Bids", "Created Auctions"];
 
@@ -13,30 +13,29 @@ const containerVariants = {
   show: { transition: { staggerChildren: 0.06 } },
 };
 
+const WALLET = "0xYourWallet"; // Replace with real wallet logic later
+
 const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
-  const [auctions, setAuctions] = useState<any[]>([]);
+  const [auctions, setAuctions] = useState<Auction[]>([]);
   const [loading, setLoading] = useState(true);
-
   const navigate = useNavigate();
-  const WALLET = "0xYourWallet"; // replace with actual wallet when ready
 
-  // Fetch auctions from backend
+  // -----------------------------
+  // Fetch Auctions
+  // -----------------------------
   useEffect(() => {
     const fetchAuctions = async () => {
       try {
         const data = await getAuctions();
-        // Add fallback variant to each auction
-        const formatted = data.map((a: any) => ({
+
+        // Convert backend dates to Date objects
+        const formatted: Auction[] = data.map((a: any) => ({
           ...a,
-          variant:
-            a.variant ||
-            (a.status === "commit"
-              ? "warning"
-              : a.status === "reveal"
-              ? "info"
-              : "success"),
+          endtime: new Date(a.endtime),
+          revealTime: new Date(a.revealTime),
         }));
+
         setAuctions(formatted);
       } catch (err) {
         console.error("Failed to fetch auctions:", err);
@@ -48,21 +47,25 @@ const Dashboard: React.FC = () => {
     fetchAuctions();
   }, []);
 
-  // Filter auctions based on selected tab
-  const filteredAuctions = (() => {
+  // -----------------------------
+  // Filter auctions by tab
+  // -----------------------------
+  const filteredAuctions = auctions.filter((a) => {
     switch (activeTab) {
-      case 0:
-        return auctions.filter((a) => a.status !== "finalized");
-      case 1:
-        return auctions.filter((a) => a.myBid === true);
-      case 2:
-        return auctions.filter((a) => a.creator === WALLET);
+      case 0: // Active Auctions
+        return a.status !== "finalized";
+      case 1: // My Bids
+        return (a as any).myBid === true; // backend should send this
+      case 2: // Created Auctions
+        return a.creatorWallet === WALLET;
       default:
-        return auctions;
+        return true;
     }
-  })();
+  });
 
-  // Dashboard stats
+  // -----------------------------
+  // Stats for top cards
+  // -----------------------------
   const stats = [
     {
       label: "Active Auctions",
@@ -78,7 +81,7 @@ const Dashboard: React.FC = () => {
     },
     {
       label: "My Bids",
-      value: auctions.filter((a) => a.myBid).length,
+      value: auctions.filter((a) => (a as any).myBid).length,
       icon: Star,
       trend: "Participating",
     },
@@ -95,9 +98,7 @@ const Dashboard: React.FC = () => {
           className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
         >
           <div>
-            <p className="font-body text-sm text-muted-foreground mb-1">
-              Welcome back,
-            </p>
+            <p className="font-body text-sm text-muted-foreground mb-1">Welcome back,</p>
             <h1 className="font-heading text-2xl sm:text-3xl font-bold text-foreground">
               {WALLET} 👋
             </h1>
@@ -162,11 +163,7 @@ const Dashboard: React.FC = () => {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           >
             {filteredAuctions.map((auction, i) => (
-              <AuctionCard
-                key={auction._id || i}
-                auction={auction}
-                index={i}
-              />
+              <AuctionCard key={auction._id} auction={auction} index={i} />
             ))}
           </motion.div>
         )}
