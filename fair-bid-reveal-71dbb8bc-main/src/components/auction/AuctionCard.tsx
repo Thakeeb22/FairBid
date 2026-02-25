@@ -1,10 +1,22 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Auction } from "@/data/mockAuctions";
 import StatusBadge from "./StatusBadge";
 import CountdownTimer from "./CountdownTimer";
 import { Users, TrendingUp } from "lucide-react";
+
+interface Auction {
+  id: string;
+  title?: string;
+  image?: string;
+  status?: "active" | "reveal" | "finalized" | string;
+  floorPrice?: number;
+  highestBid?: number;
+  participants?: number;
+  commitDeadline?: string | Date;
+  creator?: string;
+  myBid?: boolean;
+}
 
 interface AuctionCardProps {
   auction: Auction;
@@ -22,6 +34,8 @@ const AuctionCard: React.FC<AuctionCardProps> = ({ auction, index = 0 }) => {
         return { label: "Reveal Bid", route: `/reveal/${auction.id}`, variant: "outline" };
       case "finalized":
         return { label: "View Results", route: `/finalized/${auction.id}`, variant: "ghost" };
+      default:
+        return { label: "View Auction", route: `/auction/${auction.id}`, variant: "ghost" };
     }
   };
 
@@ -31,25 +45,32 @@ const AuctionCard: React.FC<AuctionCardProps> = ({ auction, index = 0 }) => {
     <motion.div
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      transition={{ duration: 0.4, delay: index * 0.07 }}
+      whileHover={{ y: -4 }}
       className="card-glass overflow-hidden group cursor-pointer"
       style={{ borderRadius: "var(--radius)" }}
       onClick={() => navigate(`/auction/${auction.id}`)}
     >
       {/* Image */}
       <div className="relative aspect-square overflow-hidden rounded-t-lg">
-        <motion.img
-          src={auction.image}
-          alt={auction.title}
-          className="w-full h-full object-cover"
-          whileHover={{ scale: 1.06 }}
-          transition={{ duration: 0.5 }}
-        />
+        {auction.image ? (
+          <motion.img
+            src={auction.image}
+            alt={auction.title || "Auction image"}
+            className="w-full h-full object-cover"
+            whileHover={{ scale: 1.06 }}
+          />
+        ) : (
+          <div className="w-full h-full bg-muted flex items-center justify-center text-sm text-muted-foreground">
+            No Image
+          </div>
+        )}
+
         <div className="absolute top-3 left-3">
-          <StatusBadge status={auction.status} />
+          <StatusBadge status={auction.status || "unknown"} />
         </div>
-        {auction.status === "active" && (
+
+        {auction.status === "active" && auction.commitDeadline && (
           <div className="absolute bottom-3 right-3 bg-background/80 backdrop-blur-sm px-2 py-1 rounded-lg border border-border">
             <CountdownTimer deadline={auction.commitDeadline} compact />
           </div>
@@ -58,13 +79,14 @@ const AuctionCard: React.FC<AuctionCardProps> = ({ auction, index = 0 }) => {
 
       {/* Content */}
       <div className="p-4 space-y-3">
-        <h3 className="font-heading font-semibold text-foreground truncate">{auction.title}</h3>
+        <h3 className="font-heading font-semibold text-foreground truncate">{auction.title || "Untitled Auction"}</h3>
 
         <div className="flex justify-between items-center">
           <div>
             <p className="text-xs text-muted-foreground font-body">Floor Price</p>
-            <p className="font-heading font-bold text-gold">{auction.floorPrice} STRK</p>
+            <p className="font-heading font-bold text-gold">{auction.floorPrice ?? 0} STRK</p>
           </div>
+
           {auction.highestBid ? (
             <div className="text-right">
               <p className="text-xs text-muted-foreground font-body">Highest Bid</p>
@@ -78,7 +100,7 @@ const AuctionCard: React.FC<AuctionCardProps> = ({ auction, index = 0 }) => {
               <p className="text-xs text-muted-foreground font-body">Participants</p>
               <p className="font-heading font-semibold text-foreground flex items-center gap-1 justify-end">
                 <Users size={12} className="text-muted-foreground" />
-                {auction.participants}
+                {auction.participants ?? 0}
               </p>
             </div>
           )}
