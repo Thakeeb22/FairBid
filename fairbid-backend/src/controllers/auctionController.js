@@ -35,7 +35,7 @@ const createAuction = async (req, res) => {
       endtime: new Date(commitDeadline),
       revealTime: new Date(revealDeadline),
       status: "commit",
-      image,
+      image:req.file ? `/uploads/${req.file.filename}`:null,
     });
 
     await auction.save();

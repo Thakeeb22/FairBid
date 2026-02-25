@@ -17,6 +17,7 @@ if(!fs.existsSync(uploadsPath)){
 }else{
   console.log("'uploads' folder already exists")
 }
+app.use("/uploads", express.static(path.join(__dirname,"uploads")))
 // Middleware
 app.use(cors());
 app.use(express.json());
