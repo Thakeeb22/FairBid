@@ -5,6 +5,18 @@ const auctionRoutes = require("./routes/auctionRoutes");
 const autoCloseAuctions = require("./utils/autoCloseAuctions")
 const revealRoutes = require("./routes/revealRoutes")
 const app = express();
+const fs = require("fs")
+const path = require("path")
+
+// Define uploads floder path
+const uploadsPath = path.join(__dirname, "uploads")
+// check if uploads floder exists, create if not
+if(!fs.existsSync(uploadsPath)){
+  fs.mkdirSync(uploadsPath, {recursive:true})
+  console.log("'uploads folder created'")
+}else{
+  console.log("'uploads' folder already exists")
+}
 // Middleware
 app.use(cors());
 app.use(express.json());
