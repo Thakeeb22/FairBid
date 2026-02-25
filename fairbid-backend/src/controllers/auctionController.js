@@ -2,6 +2,17 @@ const Auction = require("../models/Auction");
 const Bid = require("../models/Bid");
 const { commitBid, revealBid, getHighestBid, getHighestBidder } = require("../utils/starknetService");
 const crypto = require("crypto");
+const multer = require("multer");
+const path = require("path");
+
+// -----------------------------
+// Multer setup for image uploads
+// -----------------------------
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, "uploads/"),
+  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
+});
+const upload = multer({ storage });
 
 // -----------------------------
 // Create Auction
@@ -14,27 +25,27 @@ const createAuction = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const endtime = new Date(commitDeadline);
-    const revealTime = new Date(revealDeadline);
+    const image = req.file ? `/uploads/${req.file.filename}` : null;
 
     const auction = new Auction({
       title,
       description,
       startingPrice,
       creatorWallet,
-      endtime,
-      revealTime,
+      endtime: new Date(commitDeadline),
+      revealTime: new Date(revealDeadline),
       status: "commit",
+      image,
     });
 
     await auction.save();
-
     res.status(201).json({ message: "Auction created successfully", auction });
   } catch (error) {
     console.error("Create auction error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 // -----------------------------
 // Get All Auctions
 // -----------------------------
@@ -81,16 +92,12 @@ const placeBid = async (req, res) => {
       return res.status(400).json({ message: "Auction has ended" });
     }
 
-    // Compute commitment hash
     const commitment = BigInt(
-      "0x" +
-      crypto.createHash("sha256").update(bidAmount + secret).digest("hex")
+      "0x" + crypto.createHash("sha256").update(bidAmount + secret).digest("hex")
     );
 
-    // Commit bid on StarkNet
     await commitBid(commitment, BigInt(bidAmount));
 
-    // Save local record
     const bid = new Bid({
       auctionId,
       bidderWallet,
@@ -124,10 +131,8 @@ const revealBidController = async (req, res) => {
     if (new Date() < auction.endtime) return res.status(400).json({ message: "Reveal phase not started" });
     if (new Date() > auction.revealTime) return res.status(400).json({ message: "Reveal phase ended" });
 
-    // Reveal on StarkNet
     await revealBid(BigInt(bidAmount), secret);
 
-    // Mark local bid as revealed
     const bid = await Bid.findOne({ auctionId, bidderWallet });
     if (!bid) return res.status(404).json({ message: "Bid not found locally" });
 
@@ -192,6 +197,7 @@ const getFairnessMetrics = async (req, res) => {
 
 module.exports = {
   createAuction,
+  upload, // multer middleware
   getAuctions,
   getSingleAuction,
   placeBid,

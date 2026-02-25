@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageLayout from "@/components/layout/PageLayout";
 import { ArrowLeft, Rocket, Info } from "lucide-react";
-import { createAuction } from "@/lib/api"; // <-- import your API call
+import { createAuction } from "@/lib/api"; // <-- update to handle FormData
 
 interface FormData {
   title: string;
@@ -18,10 +18,12 @@ interface FormErrors {
   startingPrice?: string;
   commitDeadline?: string;
   revealDeadline?: string;
+  image?: string;
 }
 
 const CreateAuction: React.FC = () => {
   const navigate = useNavigate();
+
   const [form, setForm] = useState<FormData>({
     title: "",
     description: "",
@@ -29,10 +31,15 @@ const CreateAuction: React.FC = () => {
     commitDeadline: "",
     revealDeadline: "",
   });
+
+  const [image, setImage] = useState<File | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // -----------------------------
+  // Form Validation
+  // -----------------------------
   const validate = (): FormErrors => {
     const errs: FormErrors = {};
     if (!form.title.trim() || form.title.length < 3)
@@ -43,16 +50,19 @@ const CreateAuction: React.FC = () => {
     if (isNaN(price) || price <= 0)
       errs.startingPrice = "Starting price must be a positive number.";
     if (!form.commitDeadline) errs.commitDeadline = "Bid deadline is required.";
-    if (!form.revealDeadline)
-      errs.revealDeadline = "Reveal deadline is required.";
+    if (!form.revealDeadline) errs.revealDeadline = "Reveal deadline is required.";
     if (form.commitDeadline && form.revealDeadline) {
       if (new Date(form.revealDeadline) <= new Date(form.commitDeadline)) {
         errs.revealDeadline = "Reveal deadline must be after bid deadline.";
       }
     }
+    if (!image) errs.image = "Auction image is required.";
     return errs;
   };
 
+  // -----------------------------
+  // Handle Submit
+  // -----------------------------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs = validate();
@@ -63,32 +73,18 @@ const CreateAuction: React.FC = () => {
 
     setLoading(true);
     try {
-      const now = new Date();
+      const formData = new FormData();
+      formData.append("title", form.title);
+      formData.append("description", form.description);
+      formData.append("startingPrice", form.startingPrice);
+      formData.append("commitDeadline", form.commitDeadline);
+      formData.append("revealDeadline", form.revealDeadline);
+      formData.append("creatorWallet", "0xYourWallet"); // 🔥 replace with Starknet wallet
+      if (image) formData.append("image", image);
 
-      const commitDate = new Date(form.commitDeadline);
-      const revealDate = new Date(form.revealDeadline);
+      console.log("Sending formData:", formData);
 
-      // ⏱ Convert to hours
-      const duration = Math.ceil(
-        (commitDate.getTime() - now.getTime()) / (1000 * 60 * 60),
-      );
-
-      const revealDuration = Math.ceil(
-        (revealDate.getTime() - commitDate.getTime()) / (1000 * 60 * 60),
-      );
-
-      const payload = {
-        title: form.title,
-        description: form.description,
-        startingPrice: parseFloat(form.startingPrice),
-        commitDeadline: form.commitDeadline,
-        revealDeadline: form.revealDeadline,
-        creatorWallet: "0xYourWallet", // 🔥 replace with Starknet wallet later
-      };
-
-      console.log("Sending payload:", payload); // debug
-
-      await createAuction(payload);
+      await createAuction(formData); // API call must handle FormData
 
       setSubmitted(true);
       setTimeout(() => navigate("/dashboard"), 2000);
@@ -100,12 +96,15 @@ const CreateAuction: React.FC = () => {
     }
   };
 
+  // -----------------------------
+  // Reusable Input Field
+  // -----------------------------
   const field = (
     key: keyof FormData,
     label: string,
     type: string = "text",
     placeholder?: string,
-    hint?: string,
+    hint?: string
   ) => (
     <div className="space-y-1.5">
       <label className="font-heading text-sm font-semibold text-foreground flex items-center gap-2">
@@ -145,6 +144,31 @@ const CreateAuction: React.FC = () => {
     </div>
   );
 
+  // -----------------------------
+  // Image Upload Field
+  // -----------------------------
+  const imageField = (
+    <div className="space-y-1.5">
+      <label className="font-heading text-sm font-semibold text-foreground">
+        Auction Image
+      </label>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => {
+          if (e.target.files?.[0]) setImage(e.target.files[0]);
+        }}
+        className="w-full"
+      />
+      {errors.image && (
+        <p className="text-xs font-body text-destructive">{errors.image}</p>
+      )}
+    </div>
+  );
+
+  // -----------------------------
+  // Success Screen
+  // -----------------------------
   if (submitted) {
     return (
       <PageLayout>
@@ -163,6 +187,9 @@ const CreateAuction: React.FC = () => {
     );
   }
 
+  // -----------------------------
+  // Main Form
+  // -----------------------------
   return (
     <PageLayout>
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 animate-fade-in">
@@ -184,17 +211,12 @@ const CreateAuction: React.FC = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {field(
-              "title",
-              "Auction Title",
-              "text",
-              "e.g. Circuit Genesis #001",
-            )}
+            {field("title", "Auction Title", "text", "e.g. Circuit Genesis #001")}
             {field(
               "description",
               "Description",
               "textarea",
-              "Describe your NFT and auction terms...",
+              "Describe your NFT and auction terms..."
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -203,10 +225,12 @@ const CreateAuction: React.FC = () => {
                 "Starting Price (STRK)",
                 "number",
                 "0.00",
-                "Minimum bid accepted",
+                "Minimum bid accepted"
               )}
               <div />
             </div>
+
+            {imageField}
 
             <div className="p-4 rounded-xl border border-border bg-muted/50 space-y-1">
               <p className="font-heading text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -220,14 +244,14 @@ const CreateAuction: React.FC = () => {
                 "Bid Deadline",
                 "datetime-local",
                 undefined,
-                "Last time users can submit sealed bids",
+                "Last time users can submit sealed bids"
               )}
               {field(
                 "revealDeadline",
                 "Reveal Deadline",
                 "datetime-local",
                 undefined,
-                "Last time users can reveal their bids",
+                "Last time users can reveal their bids"
               )}
             </div>
 

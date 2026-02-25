@@ -11,7 +11,7 @@ app.use(express.json());
 // routes
 app.use("/api/auctions/", auctionRoutes);
 app.use("/api/bid", bidRoutes);
-
+app.use("/uploads",express.static("uploads"))
 // Test routes
 app.get("/", (req, res) => {
   res.send("FairBid Backend Running");
