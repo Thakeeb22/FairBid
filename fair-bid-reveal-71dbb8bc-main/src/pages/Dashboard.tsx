@@ -4,7 +4,7 @@ import AuctionCard from "@/components/auction/AuctionCard";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Plus, TrendingUp, Gavel, Star } from "lucide-react";
-import { getAuctions } from "@/lib/api"; // ✅ API
+import { getAuctions } from "@/lib/api";
 
 const tabs = ["Active Auctions", "My Bids", "Created Auctions"];
 
@@ -19,15 +19,25 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
+  const WALLET = "0xYourWallet"; // replace with actual wallet when ready
 
-  const WALLET = "0xYourWallet"; // 🔁 replace later with Starknet wallet
-
-  // ✅ Fetch auctions
+  // Fetch auctions from backend
   useEffect(() => {
     const fetchAuctions = async () => {
       try {
         const data = await getAuctions();
-        setAuctions(data);
+        // Add fallback variant to each auction
+        const formatted = data.map((a: any) => ({
+          ...a,
+          variant:
+            a.variant ||
+            (a.status === "commit"
+              ? "warning"
+              : a.status === "reveal"
+              ? "info"
+              : "success"),
+        }));
+        setAuctions(formatted);
       } catch (err) {
         console.error("Failed to fetch auctions:", err);
       } finally {
@@ -38,13 +48,13 @@ const Dashboard: React.FC = () => {
     fetchAuctions();
   }, []);
 
-  // ✅ Tab filtering
+  // Filter auctions based on selected tab
   const filteredAuctions = (() => {
     switch (activeTab) {
       case 0:
         return auctions.filter((a) => a.status !== "finalized");
       case 1:
-        return auctions.filter((a) => a.myBid === true); // backend should return this
+        return auctions.filter((a) => a.myBid === true);
       case 2:
         return auctions.filter((a) => a.creator === WALLET);
       default:
@@ -52,7 +62,7 @@ const Dashboard: React.FC = () => {
     }
   })();
 
-  // ✅ Dynamic stats
+  // Dashboard stats
   const stats = [
     {
       label: "Active Auctions",
@@ -85,7 +95,9 @@ const Dashboard: React.FC = () => {
           className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
         >
           <div>
-            <p className="font-body text-sm text-muted-foreground mb-1">Welcome back,</p>
+            <p className="font-body text-sm text-muted-foreground mb-1">
+              Welcome back,
+            </p>
             <h1 className="font-heading text-2xl sm:text-3xl font-bold text-foreground">
               {WALLET} 👋
             </h1>
@@ -150,7 +162,11 @@ const Dashboard: React.FC = () => {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           >
             {filteredAuctions.map((auction, i) => (
-              <AuctionCard key={auction.id} auction={auction} index={i} />
+              <AuctionCard
+                key={auction._id || i}
+                auction={auction}
+                index={i}
+              />
             ))}
           </motion.div>
         )}
