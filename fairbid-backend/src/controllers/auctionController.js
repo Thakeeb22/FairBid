@@ -24,7 +24,7 @@ const createAuction = async (req, res) => {
       creatorWallet,
       endtime,
       revealTime,
-      status: "bidding",
+      status: "commit",
     });
 
     await auction.save();
