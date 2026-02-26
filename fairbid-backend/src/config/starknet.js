@@ -1,4 +1,4 @@
-import { Provider, Account } from "starknet";
+const { Provider, Account } = require("starknet");
 
 const provider = new Provider({
   nodeUrl: "https://starknet-sepolia.public.blastapi.io",
