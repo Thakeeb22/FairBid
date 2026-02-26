@@ -1,10 +1,14 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAccount } from "@starknet-react/core";
 import PageLayout from "@/components/layout/PageLayout";
 import { ArrowLeft, Rocket, Info } from "lucide-react";
-import { createAuction } from "@/lib/api"; // <-- update to handle FormData
+import { createAuction } from "@/lib/api";
 
-interface FormData {
+// -----------------------------
+// Types
+// -----------------------------
+interface FormState {
   title: string;
   description: string;
   startingPrice: string;
@@ -21,10 +25,14 @@ interface FormErrors {
   image?: string;
 }
 
+// -----------------------------
+// Component
+// -----------------------------
 const CreateAuction: React.FC = () => {
   const navigate = useNavigate();
+  const { address } = useAccount(); // ✅ REAL WALLET
 
-  const [form, setForm] = useState<FormData>({
+  const [form, setForm] = useState<FormState>({
     title: "",
     description: "",
     startingPrice: "",
@@ -34,62 +42,74 @@ const CreateAuction: React.FC = () => {
 
   const [image, setImage] = useState<File | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   // -----------------------------
-  // Form Validation
+  // Validation
   // -----------------------------
   const validate = (): FormErrors => {
-    const errs: FormErrors = {};
+    const err: FormErrors = {};
+
     if (!form.title.trim() || form.title.length < 3)
-      errs.title = "Title must be at least 3 characters.";
+      err.title = "Title must be at least 3 characters.";
+
     if (!form.description.trim() || form.description.length < 10)
-      errs.description = "Description must be at least 10 characters.";
+      err.description = "Description must be at least 10 characters.";
+
     const price = parseFloat(form.startingPrice);
     if (isNaN(price) || price <= 0)
-      errs.startingPrice = "Starting price must be a positive number.";
-    if (!form.commitDeadline) errs.commitDeadline = "Bid deadline is required.";
-    if (!form.revealDeadline) errs.revealDeadline = "Reveal deadline is required.";
+      err.startingPrice = "Starting price must be a positive number.";
+
+    if (!form.commitDeadline) err.commitDeadline = "Commit deadline required";
+    if (!form.revealDeadline) err.revealDeadline = "Reveal deadline required";
+
     if (form.commitDeadline && form.revealDeadline) {
       if (new Date(form.revealDeadline) <= new Date(form.commitDeadline)) {
-        errs.revealDeadline = "Reveal deadline must be after bid deadline.";
+        err.revealDeadline = "Reveal must be after commit";
       }
     }
-    if (!image) errs.image = "Auction image is required.";
-    return errs;
+
+    if (!image) err.image = "Auction image required";
+
+    return err;
   };
 
   // -----------------------------
-  // Handle Submit
+  // Submit Handler
   // -----------------------------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
+
+    const validation = validate();
+    if (Object.keys(validation).length) {
+      setErrors(validation);
       return;
     }
 
-    setLoading(true);
+    if (!address) {
+      alert("Please connect your wallet first.");
+      return;
+    }
+
     try {
+      setLoading(true);
+
       const formData = new FormData();
       formData.append("title", form.title);
       formData.append("description", form.description);
       formData.append("startingPrice", form.startingPrice);
       formData.append("commitDeadline", form.commitDeadline);
       formData.append("revealDeadline", form.revealDeadline);
-      formData.append("creatorWallet", "0xYourWallet"); // 🔥 replace with Starknet wallet
+      formData.append("creatorWallet", address); // ✅ REAL WALLET
       if (image) formData.append("image", image);
 
-      console.log("Sending formData:", formData);
-
-      await createAuction(formData); // API call must handle FormData
+      await createAuction(formData);
 
       setSubmitted(true);
       setTimeout(() => navigate("/dashboard"), 2000);
     } catch (err) {
-      console.error("Failed to create auction:", err);
+      console.error(err);
       alert("Failed to create auction. Check console.");
     } finally {
       setLoading(false);
@@ -97,71 +117,34 @@ const CreateAuction: React.FC = () => {
   };
 
   // -----------------------------
-  // Reusable Input Field
+  // Reusable Input
   // -----------------------------
-  const field = (
-    key: keyof FormData,
+  const Input = (
+    key: keyof FormState,
     label: string,
     type: string = "text",
-    placeholder?: string,
-    hint?: string
+    textarea = false
   ) => (
     <div className="space-y-1.5">
-      <label className="font-heading text-sm font-semibold text-foreground flex items-center gap-2">
-        {label}
-        {hint && (
-          <span className="group relative">
-            <Info size={13} className="text-muted-foreground cursor-help" />
-            <span className="absolute left-5 -top-1 w-48 p-2 bg-card border border-border rounded-lg text-xs font-body text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-              {hint}
-            </span>
-          </span>
-        )}
-      </label>
-      {type === "textarea" ? (
+      <label className="font-heading text-sm font-semibold">{label}</label>
+
+      {textarea ? (
         <textarea
-          className={`w-full bg-muted border rounded-xl px-4 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-gold transition-colors resize-none h-28 ${
-            errors[key] ? "border-destructive" : "border-border"
-          }`}
-          placeholder={placeholder}
           value={form[key]}
           onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+          className="w-full bg-muted border rounded-xl px-4 py-3"
         />
       ) : (
         <input
           type={type}
-          className={`w-full bg-muted border rounded-xl px-4 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-gold transition-colors ${
-            errors[key] ? "border-destructive" : "border-border"
-          }`}
-          placeholder={placeholder}
           value={form[key]}
           onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+          className="w-full bg-muted border rounded-xl px-4 py-3"
         />
       )}
-      {errors[key] && (
-        <p className="text-xs font-body text-destructive">{errors[key]}</p>
-      )}
-    </div>
-  );
 
-  // -----------------------------
-  // Image Upload Field
-  // -----------------------------
-  const imageField = (
-    <div className="space-y-1.5">
-      <label className="font-heading text-sm font-semibold text-foreground">
-        Auction Image
-      </label>
-      <input
-        type="file"
-        accept="image/*"
-        onChange={(e) => {
-          if (e.target.files?.[0]) setImage(e.target.files[0]);
-        }}
-        className="w-full"
-      />
-      {errors.image && (
-        <p className="text-xs font-body text-destructive">{errors.image}</p>
+      {errors[key] && (
+        <p className="text-xs text-destructive">{errors[key]}</p>
       )}
     </div>
   );
@@ -172,15 +155,11 @@ const CreateAuction: React.FC = () => {
   if (submitted) {
     return (
       <PageLayout>
-        <div className="max-w-lg mx-auto px-4 py-20 text-center animate-fade-in">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-gold mx-auto flex items-center justify-center mb-6 gold-glow">
-            <Rocket size={36} className="text-accent-foreground" />
-          </div>
-          <h2 className="font-heading text-2xl font-bold text-foreground mb-2">
-            Auction Created!
-          </h2>
-          <p className="font-body text-muted-foreground">
-            Your sealed-bid auction is live on Starknet. Redirecting...
+        <div className="text-center py-20">
+          <Rocket size={40} className="mx-auto text-gold" />
+          <h2 className="text-xl font-bold mt-4">Auction Created!</h2>
+          <p className="text-muted-foreground">
+            Redirecting to dashboard...
           </p>
         </div>
       </PageLayout>
@@ -188,93 +167,57 @@ const CreateAuction: React.FC = () => {
   }
 
   // -----------------------------
-  // Main Form
+  // Main UI
   // -----------------------------
   return (
     <PageLayout>
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 animate-fade-in">
+      <div className="max-w-2xl mx-auto py-6">
         <button
           onClick={() => navigate("/dashboard")}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-body text-sm mb-6 transition-colors"
+          className="flex items-center gap-2 text-muted-foreground mb-6"
         >
-          <ArrowLeft size={16} /> Back to Dashboard
+          <ArrowLeft size={16} /> Back
         </button>
 
-        <div className="card-glass p-6 sm:p-8">
-          <div className="mb-8">
-            <h1 className="font-heading text-2xl font-bold text-foreground mb-1">
-              Create Auction
-            </h1>
-            <p className="font-body text-sm text-muted-foreground">
-              Deploy a sealed-bid auction smart contract on Starknet.
-            </p>
-          </div>
+        <div className="card-glass p-6 space-y-5">
+          <h1 className="text-2xl font-bold">Create Auction</h1>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {field("title", "Auction Title", "text", "e.g. Circuit Genesis #001")}
-            {field(
-              "description",
-              "Description",
-              "textarea",
-              "Describe your NFT and auction terms..."
-            )}
+            {Input("title", "Auction Title")}
+            {Input("description", "Description", "text", true)}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {field(
-                "startingPrice",
-                "Starting Price (STRK)",
-                "number",
-                "0.00",
-                "Minimum bid accepted"
-              )}
-              <div />
-            </div>
+            {Input("startingPrice", "Starting Price (STRK)", "number")}
 
-            {imageField}
-
-            <div className="p-4 rounded-xl border border-border bg-muted/50 space-y-1">
-              <p className="font-heading text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Auction Timeline
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {field(
-                "commitDeadline",
-                "Bid Deadline",
-                "datetime-local",
-                undefined,
-                "Last time users can submit sealed bids"
-              )}
-              {field(
-                "revealDeadline",
-                "Reveal Deadline",
-                "datetime-local",
-                undefined,
-                "Last time users can reveal their bids"
+            {/* Image Upload */}
+            <div>
+              <label className="font-semibold text-sm">Auction Image</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImage(e.target.files?.[0] || null)}
+                className="w-full mt-2"
+              />
+              {errors.image && (
+                <p className="text-xs text-destructive">{errors.image}</p>
               )}
             </div>
 
-            <div className="flex gap-3 p-4 rounded-xl border border-accent-muted bg-accent/5">
-              <Info size={16} className="text-gold mt-0.5 shrink-0" />
-              <div className="space-y-1">
-                <p className="font-heading text-sm font-semibold text-foreground">
-                  How commit-reveal works
-                </p>
-                <p className="font-body text-xs text-muted-foreground leading-relaxed">
-                  Bidders submit a cryptographic hash of their bid during the
-                  commit phase. After the deadline, they reveal the actual bid.
-                  This prevents frontrunning and ensures a fair auction.
-                </p>
-              </div>
+            <div className="grid grid-cols-2 gap-4">
+              {Input("commitDeadline", "Commit Deadline", "datetime-local")}
+              {Input("revealDeadline", "Reveal Deadline", "datetime-local")}
+            </div>
+
+            {/* Info Box */}
+            <div className="flex gap-2 text-xs text-muted-foreground">
+              <Info size={14} />
+              Commit = hidden bids. Reveal = open bids.
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-gradient-gold rounded-xl font-heading font-bold text-accent-foreground text-base gold-glow hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2 animate-gold-pulse"
+              className="w-full py-3 bg-gradient-gold rounded-xl font-bold"
             >
-              <Rocket size={18} />
               {loading ? "Creating..." : "Create Auction 🚀"}
             </button>
           </form>
