@@ -1,4 +1,4 @@
-import { Provider, Account } from "starknet";
+const { Provider, Account } =   require("starknet");
 
 const provider = new Provider({
   nodeUrl: process.env.STARKNET_RPC,
@@ -15,8 +15,9 @@ if (!adminPrivateKey) {
   throw new Error("ADMIN_PRIVATE_KEY is not set");
 }
 
-export const account = new Account(
+const account = new Account(
   provider,
   adminAddress,
   adminPrivateKey
 );
+module.exports{account};
