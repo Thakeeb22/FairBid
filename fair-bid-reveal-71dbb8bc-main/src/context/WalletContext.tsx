@@ -28,17 +28,8 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
       if (!starknet) {
         alert(
-          "No StarkNet wallet detected! Install Ready Wallet, Braavos, or Voyager."
+          "No StarkNet wallet detected! Install Ready Wallet, Braavos, Voyager, or Argent X."
         );
-        return;
-      }
-
-      // Check supported wallets
-      const isSupported =
-        starknet.isReady || starknet.isBraavos || starknet.isVoyager;
-
-      if (!isSupported) {
-        alert("Detected wallet is not supported.");
         return;
       }
 

@@ -12,7 +12,8 @@ import nft2 from "@/assets/nft-2.jpg";
 import nft3 from "@/assets/nft-3.jpg";
 // import logo from "@/assets/logo.jpg";
 import logo2 from "@/assets/logo2.jpg";
-
+import {useWallet} from "@/context/WalletContext"
+const {connectWallet, account, address} = useWallet();
 const FadeUp: React.FC<{ children: React.ReactNode; delay?: number; className?: string }> = ({
   children,
   delay = 0,
@@ -67,10 +68,15 @@ const LandingPage: React.FC = () => {
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => navigate("/dashboard")}
+              onClick={async () =>{
+                if(!account){
+                  await connectWallet()
+                }
+                navigate("/dashboard")
+              }}
               className="px-4 py-2 rounded-xl bg-gradient-gold text-accent-foreground font-heading font-semibold text-sm gold-glow"
             >
-              Connect wallet
+              {account? `Connected: ${address.slice(0,6)}...${address.slice(-4)}`:"Connect Wallet"}
             </motion.button>
           </div>
         </div>
