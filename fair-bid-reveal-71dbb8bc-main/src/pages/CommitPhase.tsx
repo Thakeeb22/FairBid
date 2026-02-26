@@ -80,8 +80,9 @@ const CommitPhase: React.FC = () => {
 
     try {
       await commitBidAPI(auction._id, {
-        commitment: hash,
-        bidder: address,
+        bidderWallet: address,
+        bidAmount: parseFloat(bidAmount),
+        secret:secret,
       });
       setSubmitted(true);
     } catch (err) {
