@@ -1,11 +1,11 @@
 const Auction = require("../models/Auction");
 const Bid = require("../models/Bid");
-const {
-  commitBid,
-  revealBid,
-  getHighestBid,
-  getHighestBidder,
-} = require("../utils/starknetService");
+// const {
+//   commitBid,
+//   revealBid,
+//   getHighestBid,
+//   getHighestBidder,
+// } = require("../utils/starknetService");
 const crypto = require("crypto");
 
 // ===================== Create Auction =====================
