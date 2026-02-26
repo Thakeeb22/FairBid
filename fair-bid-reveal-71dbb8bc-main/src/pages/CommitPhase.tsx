@@ -3,14 +3,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import PageLayout from "@/components/layout/PageLayout";
 import { ArrowLeft, Hash, Lock, RefreshCw, Shield, Info } from "lucide-react";
 import { getSingleAuction, commitBidAPI } from "@/lib/api";
-import { useWallet } from "@/context/WalletContext"; // <-- import wallet
+import { useWallet } from "@/context/WalletContext"; // <-- wallet context
 
 const phases = ["Product", "Commit", "Reveal", "Finalized"];
 
 const CommitPhase: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { account, address, connectWallet } = useWallet(); // <-- use wallet
+  const { account, address, connectWallet } = useWallet(); // <-- dynamic wallet
 
   const [auction, setAuction] = useState<any>(null);
   const [bidAmount, setBidAmount] = useState("");
@@ -72,9 +72,8 @@ const CommitPhase: React.FC = () => {
     try {
       await commitBidAPI(auction._id, {
         commitment: hash,
-        bidder: address, // <-- send wallet address
+        bidder: address, // <-- dynamic wallet address
       });
-
       setSubmitted(true);
     } catch (err) {
       console.error("Failed to submit bid:", err);
@@ -101,13 +100,18 @@ const CommitPhase: React.FC = () => {
   return (
     <PageLayout>
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        <button onClick={() => navigate(`/auction/${auction._id}`)} className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-body text-sm transition-colors">
+        <button
+          onClick={() => navigate(`/auction/${auction._id}`)}
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-body text-sm transition-colors"
+        >
           <ArrowLeft size={16} /> Back to Auction
         </button>
 
         {!account ? (
           <div className="card-glass p-6 text-center">
-            <p className="mb-4 text-sm text-muted-foreground">Connect your Argent X wallet to participate.</p>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Connect your Argent X wallet to participate.
+            </p>
             <button
               onClick={connectWallet}
               className="py-3 px-6 bg-gradient-gold rounded-xl font-heading font-bold text-accent-foreground hover:opacity-90 transition-all"
@@ -116,10 +120,65 @@ const CommitPhase: React.FC = () => {
             </button>
           </div>
         ) : (
-          /* Render the original commit form here */
-          <div className={`card-glass p-6 space-y-5 ${!isActive ? "opacity-60 pointer-events-none" : ""}`}>
-            {/* Bid amount, secret, generate hash, submit button */}
-            {/* ... keep your existing form ... */}
+          <div
+            className={`card-glass p-6 space-y-5 ${
+              !isActive ? "opacity-60 pointer-events-none" : ""
+            }`}
+          >
+            {/* Bid Form */}
+            <div className="space-y-4">
+              <div>
+                <label className="font-body text-sm text-muted-foreground">
+                  Bid Amount (STRK)
+                </label>
+                <input
+                  type="number"
+                  value={bidAmount}
+                  onChange={(e) => setBidAmount(e.target.value)}
+                  className="w-full mt-1 p-3 rounded-xl border border-border focus:border-gold focus:ring-1 focus:ring-gold outline-none"
+                  placeholder="Enter your bid"
+                />
+                {errors.bid && (
+                  <p className="text-xs text-destructive mt-1">{errors.bid}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="font-body text-sm text-muted-foreground">
+                  Secret Phrase
+                </label>
+                <input
+                  type="text"
+                  value={secret}
+                  onChange={(e) => setSecret(e.target.value)}
+                  className="w-full mt-1 p-3 rounded-xl border border-border focus:border-gold focus:ring-1 focus:ring-gold outline-none"
+                  placeholder="Enter secret phrase"
+                />
+                {errors.secret && (
+                  <p className="text-xs text-destructive mt-1">{errors.secret}</p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={generateHash}
+                  className="flex-1 py-3 bg-accent/10 hover:bg-accent/20 rounded-xl font-body font-semibold transition-all"
+                >
+                  Generate Hash
+                </button>
+                <span className="font-body text-sm text-muted-foreground break-all">
+                  {hash || "-"}
+                </span>
+              </div>
+
+              <button
+                onClick={handleSubmit}
+                disabled={submitted}
+                className="w-full py-3 bg-gradient-gold rounded-xl font-heading font-bold text-accent-foreground hover:opacity-90 transition-all"
+              >
+                {submitted ? "Submitted" : "Commit Bid"}
+              </button>
+            </div>
           </div>
         )}
       </div>

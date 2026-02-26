@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import PageLayout from "@/components/layout/PageLayout";
-import AuctionCard, { Auction, AuctionPhase } from "@/components/auction/AuctionCard";
+import AuctionCard, { Auction } from "@/components/auction/AuctionCard";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Plus, TrendingUp, Gavel, Star } from "lucide-react";
 import { getAuctions } from "@/lib/api"; // your backend API call
+import { useWallet } from "@/context/WalletContext"; // <-- use WalletContext
 
 const tabs = ["Active Auctions", "My Bids", "Created Auctions"];
 
@@ -13,13 +14,14 @@ const containerVariants = {
   show: { transition: { staggerChildren: 0.06 } },
 };
 
-const WALLET = "0xYourWallet"; // Replace with real wallet logic later
-
 const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  // Use WalletContext instead of useAccount
+  const { account, address, connectWallet } = useWallet();
 
   // -----------------------------
   // Fetch Auctions
@@ -57,7 +59,7 @@ const Dashboard: React.FC = () => {
       case 1: // My Bids
         return (a as any).myBid === true; // backend should send this
       case 2: // Created Auctions
-        return a.creatorWallet === WALLET;
+        return a.creatorWallet === address; // <-- wallet address from context
       default:
         return true;
     }
@@ -100,18 +102,24 @@ const Dashboard: React.FC = () => {
           <div>
             <p className="font-body text-sm text-muted-foreground mb-1">Welcome back,</p>
             <h1 className="font-heading text-2xl sm:text-3xl font-bold text-foreground">
-              {WALLET} 👋
+              {address || "Guest"} 👋
             </h1>
           </div>
 
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => navigate("/create")}
+            onClick={() => {
+              if (!account) {
+                connectWallet();
+              } else {
+                navigate("/create");
+              }
+            }}
             className="flex items-center gap-2 px-5 py-3 bg-gradient-gold rounded-xl font-heading font-semibold text-accent-foreground gold-glow"
           >
             <Plus size={18} />
-            Create Auction
+            {account ? "Create Auction" : "Connect Wallet"}
           </motion.button>
         </motion.div>
 

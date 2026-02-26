@@ -1,47 +1,63 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import PageLayout from "@/components/layout/PageLayout";
-import { ArrowLeft, Trophy, Crown, Users, Clock } from "lucide-react";
-import { getSingleAuction, getBidHistory } from "@/lib/api"; // updated imports
+import { ArrowLeft, Trophy, Users, Clock } from "lucide-react";
+import { getSingleAuction, getBidHistory } from "@/lib/api";
+import { useWallet } from "@/context/WalletContext"; // <-- use WalletContext
+
+interface AuctionHistoryRow {
+  address: string;
+  bid: number;
+}
+
+interface AuctionData {
+  _id: string;
+  title: string;
+  image?: string;
+  winner?: string;
+  winningBid?: number;
+  participants?: number;
+  reveals?: number;
+  creator: string;
+}
 
 const Finalized: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { account, address, connectWallet } = useWallet(); // ✅ Wallet context
 
-  const [auction, setAuction] = useState<any>(null);
-  const [history, setHistory] = useState<any[]>([]);
+  const [auction, setAuction] = useState<AuctionData | null>(null);
+  const [history, setHistory] = useState<AuctionHistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const WALLET = "0xYourWallet"; // replace later with Starknet wallet
-
   useEffect(() => {
-    const load = async () => {
-      if (!id) return;
+    if (!id) return;
+
+    const loadAuction = async () => {
       try {
         const data = await getSingleAuction(id);
         setAuction(data);
 
-        // fetch bid history
         try {
-          const h = await getBidHistory(id);
-          setHistory(h);
+          const bidHistory = await getBidHistory(id);
+          setHistory(bidHistory);
         } catch {
-          console.warn("No history endpoint yet");
+          console.warn("No bid history available for this auction");
         }
       } catch (err) {
-        console.error(err);
+        console.error("Failed to load auction:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    load();
+    loadAuction();
   }, [id]);
 
   if (loading) {
     return (
       <PageLayout>
-        <div className="text-center py-20">Loading auction...</div>
+        <div className="text-center py-20 text-muted-foreground">Loading auction...</div>
       </PageLayout>
     );
   }
@@ -49,17 +65,17 @@ const Finalized: React.FC = () => {
   if (!auction) {
     return (
       <PageLayout>
-        <div className="text-center py-20">Auction not found</div>
+        <div className="text-center py-20 text-muted-foreground">Auction not found</div>
       </PageLayout>
     );
   }
 
-  const isOwner = auction.creator === WALLET;
+  const isOwner = auction.creator === address; // <-- use address from WalletContext
 
   return (
     <PageLayout>
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Back */}
+        {/* Back Button */}
         <button
           onClick={() => navigate("/dashboard")}
           className="flex items-center gap-2 text-muted-foreground text-sm"
@@ -68,56 +84,52 @@ const Finalized: React.FC = () => {
         </button>
 
         {/* Winner Card */}
-        <div className="card-glass p-6">
-          <div className="flex gap-6 items-center">
+        <div className="card-glass p-6 flex flex-col sm:flex-row items-center gap-6">
+          {auction.image && (
             <img
               src={auction.image}
+              alt={auction.title}
               className="w-28 h-28 rounded-xl object-cover"
             />
-
-            <div className="flex-1">
-              <p className="text-sm text-muted-foreground">🏆 Winner</p>
-              <h2 className="text-xl font-bold">{auction.title}</h2>
-              <p className="text-sm">{auction.winner}</p>
-            </div>
-
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">Winning Bid</p>
-              <p className="text-3xl font-bold text-gold">
-                {auction.winningBid} STRK
-              </p>
-            </div>
+          )}
+          <div className="flex-1 text-center sm:text-left">
+            <p className="text-sm text-muted-foreground">🏆 Winner</p>
+            <h2 className="text-xl font-bold">{auction.title}</h2>
+            <p className="text-sm">{auction.winner || "N/A"}</p>
+          </div>
+          <div className="text-center sm:text-right">
+            <p className="text-xs text-muted-foreground">Winning Bid</p>
+            <p className="text-3xl font-bold text-gold">
+              {auction.winningBid ?? 0} STRK
+            </p>
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Auction Stats */}
         <div className="grid grid-cols-3 gap-4">
           <div className="card-glass p-4 text-center">
             <Clock className="mx-auto mb-1 text-gold" />
             <p className="font-bold">48h</p>
             <p className="text-xs text-muted-foreground">Duration</p>
           </div>
-
           <div className="card-glass p-4 text-center">
             <Users className="mx-auto mb-1 text-gold" />
-            <p className="font-bold">{auction.participants}</p>
+            <p className="font-bold">{auction.participants ?? 0}</p>
             <p className="text-xs text-muted-foreground">Participants</p>
           </div>
-
           <div className="card-glass p-4 text-center">
             <Trophy className="mx-auto mb-1 text-gold" />
-            <p className="font-bold">{auction.reveals}</p>
+            <p className="font-bold">{auction.reveals ?? 0}</p>
             <p className="text-xs text-muted-foreground">Reveals</p>
           </div>
         </div>
 
-        {/* History */}
+        {/* Bid History */}
         {history.length > 0 && (
           <div className="card-glass overflow-hidden">
             <div className="p-4 border-b">
               <h2 className="font-bold">Full Auction History</h2>
             </div>
-
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-muted/30">

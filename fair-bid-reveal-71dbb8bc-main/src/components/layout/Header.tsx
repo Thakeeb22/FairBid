@@ -1,9 +1,11 @@
 import React from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Bell, ChevronDown } from "lucide-react";
+import { useWallet } from "@/context/WalletContext";
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
+  const { address, connectWallet } = useWallet();
 
   return (
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
@@ -45,11 +47,19 @@ const Header: React.FC = () => {
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-gold rounded-full" />
           </button>
 
-          <button className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border hover:border-gold/50 transition-colors">
+          {/* Wallet Button */}
+          <button
+            onClick={() => !address && connectWallet()}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border hover:border-gold/50 transition-colors"
+          >
             <div className="w-6 h-6 rounded-full bg-gradient-gold flex items-center justify-center">
-              <span className="text-xs font-heading font-bold text-accent-foreground">0x</span>
+              <span className="text-xs font-heading font-bold text-accent-foreground">
+                {address ? address.slice(2, 4) : "0x"}
+              </span>
             </div>
-            <span className="font-body text-sm text-foreground hidden sm:block">0x04aB3...f8e2</span>
+            <span className="font-body text-sm text-foreground hidden sm:block">
+              {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Connect Wallet"}
+            </span>
             <ChevronDown size={14} className="text-muted-foreground hidden sm:block" />
           </button>
         </div>

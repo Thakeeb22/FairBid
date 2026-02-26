@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAccount } from "@starknet-react/core";
 import PageLayout from "@/components/layout/PageLayout";
 import { ArrowLeft, Rocket, Info } from "lucide-react";
 import { createAuction } from "@/lib/api";
+import { useWallet } from "@/context/WalletContext"; // <-- use WalletContext
 
 // -----------------------------
 // Types
@@ -30,7 +30,7 @@ interface FormErrors {
 // -----------------------------
 const CreateAuction: React.FC = () => {
   const navigate = useNavigate();
-  const { address } = useAccount(); // ✅ REAL WALLET
+  const { account, address, connectWallet } = useWallet(); // <-- dynamic wallet
 
   const [form, setForm] = useState<FormState>({
     title: "",
@@ -87,8 +87,8 @@ const CreateAuction: React.FC = () => {
       return;
     }
 
-    if (!address) {
-      alert("Please connect your wallet first.");
+    if (!account) {
+      alert("Please connect your Argent X wallet first.");
       return;
     }
 
@@ -101,7 +101,7 @@ const CreateAuction: React.FC = () => {
       formData.append("startingPrice", form.startingPrice);
       formData.append("commitDeadline", form.commitDeadline);
       formData.append("revealDeadline", form.revealDeadline);
-      formData.append("creatorWallet", address); // ✅ REAL WALLET
+      formData.append("creatorWallet", address); // <-- wallet address from context
       if (image) formData.append("image", image);
 
       await createAuction(formData);
@@ -179,49 +179,62 @@ const CreateAuction: React.FC = () => {
           <ArrowLeft size={16} /> Back
         </button>
 
-        <div className="card-glass p-6 space-y-5">
-          <h1 className="text-2xl font-bold">Create Auction</h1>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {Input("title", "Auction Title")}
-            {Input("description", "Description", "text", true)}
-
-            {Input("startingPrice", "Starting Price (STRK)", "number")}
-
-            {/* Image Upload */}
-            <div>
-              <label className="font-semibold text-sm">Auction Image</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setImage(e.target.files?.[0] || null)}
-                className="w-full mt-2"
-              />
-              {errors.image && (
-                <p className="text-xs text-destructive">{errors.image}</p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {Input("commitDeadline", "Commit Deadline", "datetime-local")}
-              {Input("revealDeadline", "Reveal Deadline", "datetime-local")}
-            </div>
-
-            {/* Info Box */}
-            <div className="flex gap-2 text-xs text-muted-foreground">
-              <Info size={14} />
-              Commit = hidden bids. Reveal = open bids.
-            </div>
-
+        {!account ? (
+          <div className="card-glass p-6 text-center">
+            <p className="mb-4 text-sm text-muted-foreground">
+              Connect your Argent X wallet to create an auction.
+            </p>
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-gradient-gold rounded-xl font-bold"
+              onClick={connectWallet}
+              className="py-3 px-6 bg-gradient-gold rounded-xl font-heading font-bold text-accent-foreground hover:opacity-90 transition-all"
             >
-              {loading ? "Creating..." : "Create Auction 🚀"}
+              Connect Wallet
             </button>
-          </form>
-        </div>
+          </div>
+        ) : (
+          <div className="card-glass p-6 space-y-5">
+            <h1 className="text-2xl font-bold">Create Auction</h1>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {Input("title", "Auction Title")}
+              {Input("description", "Description", "text", true)}
+              {Input("startingPrice", "Starting Price (STRK)", "number")}
+
+              {/* Image Upload */}
+              <div>
+                <label className="font-semibold text-sm">Auction Image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setImage(e.target.files?.[0] || null)}
+                  className="w-full mt-2"
+                />
+                {errors.image && (
+                  <p className="text-xs text-destructive">{errors.image}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {Input("commitDeadline", "Commit Deadline", "datetime-local")}
+                {Input("revealDeadline", "Reveal Deadline", "datetime-local")}
+              </div>
+
+              {/* Info Box */}
+              <div className="flex gap-2 text-xs text-muted-foreground">
+                <Info size={14} />
+                Commit = hidden bids. Reveal = open bids.
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-gradient-gold rounded-xl font-bold"
+              >
+                {loading ? "Creating..." : "Create Auction 🚀"}
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </PageLayout>
   );

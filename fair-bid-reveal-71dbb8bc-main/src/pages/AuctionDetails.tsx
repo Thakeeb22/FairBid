@@ -9,6 +9,7 @@ import {
   getFairnessMetrics,
 } from "@/lib/api";
 import { ArrowLeft, Shield, Lock, Eye, Users, Hash } from "lucide-react";
+import { useWallet } from "@/context/WalletContext"; // new wallet hook
 
 // Type definitions
 interface Bid {
@@ -45,6 +46,7 @@ interface Metrics {
 const AuctionDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { address: connectedWallet } = useWallet(); // use dynamic wallet
 
   const [auction, setAuction] = useState<Auction | null>(null);
   const [bidHistory, setBidHistory] = useState<Bid[]>([]);
@@ -96,6 +98,8 @@ const AuctionDetails: React.FC = () => {
     );
   }
 
+  const isOwner = auction.creatorWallet === connectedWallet; // dynamic owner check
+
   const getCtaRoute = () => {
     switch (auction.status) {
       case "active":
@@ -142,6 +146,7 @@ const AuctionDetails: React.FC = () => {
             </div>
             <p className="font-body text-sm text-muted-foreground mt-1">
               Created by {auction.creatorWallet}
+              {isOwner && " (You)"}
             </p>
           </div>
         </div>
