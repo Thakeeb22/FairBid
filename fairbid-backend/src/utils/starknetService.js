@@ -32,7 +32,7 @@ const createAuction = async (req, res) => {
 
     const endtime = new Date(Date.now() + duration * 60 * 60 * 1000);
     const revealTime = new Date(
-      endtime.getTime() + revealDuration * 60 * 60 * 1000
+      endtime.getTime() + revealDuration * 60 * 60 * 1000,
     );
 
     const auction = new Auction({
@@ -66,14 +66,32 @@ const getAuctions = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+async function commitBid(commitment, bidAmount) {
+  try {
+    // Call the contract method 'commit_bid' (adjust name to match your contract)
+    const tx = await auctionContract.invoke("commit_bid", {
+      commitment: commitment.toString(), // StarkNet felt/string
+      bid_amount: bidAmount.toString(),
+    });
 
+    console.log("Commit transaction sent:", tx.transaction_hash);
+
+    // Wait for transaction confirmation
+    const receipt = await provider.waitForTransaction(tx.transaction_hash);
+    console.log("Commit transaction confirmed:", receipt.status);
+
+    return receipt.status; // optionally return status
+  } catch (error) {
+    console.error("Error committing bid on StarkNet:", error);
+    throw new Error("Commit failed on StarkNet");
+  }
+}
 // ===================== Get Single Auction =====================
 const getSingleAuction = async (req, res) => {
   try {
     const { auctionId } = req.params;
     const auction = await Auction.findById(auctionId);
-    if (!auction)
-      return res.status(404).json({ message: "Auction not found" });
+    if (!auction) return res.status(404).json({ message: "Auction not found" });
 
     res.status(200).json(auction);
   } catch (error) {
@@ -104,7 +122,10 @@ const placeBid = async (req, res) => {
     // Compute commitment hash
     const commitment = BigInt(
       "0x" +
-        crypto.createHash("sha256").update(bidAmount + secret).digest("hex")
+        crypto
+          .createHash("sha256")
+          .update(bidAmount + secret)
+          .digest("hex"),
     );
 
     // Commit bid on StarkNet
@@ -179,7 +200,9 @@ const getBidHistory = async (req, res) => {
         .json({ message: "Bids are hidden until reveal phase" });
     }
 
-    const bids = await Bid.find({ auctionId, revealed: true }).sort({ amount: -1 });
+    const bids = await Bid.find({ auctionId, revealed: true }).sort({
+      amount: -1,
+    });
 
     res.status(200).json({
       totalBids: bids.length,
