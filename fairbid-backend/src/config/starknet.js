@@ -1,3 +1,9 @@
+console.log("====== ENV DEBUG ======");
+console.log("All ENV keys:", Object.keys(process.env));
+console.log("ADMIN_ADDRESS:", process.env.ADMIN_ADDRESS);
+console.log("ADMIN_PRIVATE_KEY exists:", !!process.env.ADMIN_PRIVATE_KEY);
+console.log("STARKNET_RPC:", process.env.STARKNET_RPC);
+console.log("=======================");
 const { Provider, Account } = require("starknet");
 
 const provider = new Provider({
