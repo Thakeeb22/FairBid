@@ -8,8 +8,11 @@ const adminAddress = process.env.ADMIN_ADDRESS;
 const adminPrivateKey = process.env.ADMIN_PRIVATE_KEY;
 
 if (!adminAddress || !adminPrivateKey) {
-  throw new Error("ADMIN_ADDRESS or ADMIN_PRIVATE_KEY not set in environment variables");
+  throw new Error(
+    "ADMIN_ADDRESS or ADMIN_PRIVATE_KEY not set in environment variables",
+  );
 }
 
 // Backend wallet
-export const account = new Account(provider, adminAddress, adminPrivateKey);
+const account = new Account(provider, adminAddress, adminPrivateKey);
+module.exports = { account };
