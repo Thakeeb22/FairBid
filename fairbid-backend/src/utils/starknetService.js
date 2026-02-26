@@ -66,26 +66,71 @@ const getAuctions = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+// src/utils/starknetService.js
+const { account } = require("../config/starknet"); // backend account
+const { Contract } = require("starknet");
+const auctionAbi = require("../abi/auction"); // import ABI directly
+
+const AUCTION_CONTRACT_ADDRESS = process.env.AUCTION_CONTRACT_ADDRESS;
+if (!AUCTION_CONTRACT_ADDRESS) {
+  throw new Error("AUCTION_CONTRACT_ADDRESS not set in environment variables");
+}
+
+// Create Contract instance
+const auctionContract = new Contract(
+  auctionAbi,
+  AUCTION_CONTRACT_ADDRESS,
+  account,
+);
+
+// ----------------------------
+// Commit Bid Function
+// ----------------------------
 async function commitBid(commitment, bidAmount) {
   try {
-    // Call the contract method 'commit_bid' (adjust name to match your contract)
     const tx = await auctionContract.invoke("commit_bid", {
-      commitment: commitment.toString(), // StarkNet felt/string
+      commitment: commitment.toString(),
       bid_amount: bidAmount.toString(),
     });
 
     console.log("Commit transaction sent:", tx.transaction_hash);
 
-    // Wait for transaction confirmation
-    const receipt = await provider.waitForTransaction(tx.transaction_hash);
+    const receipt = await account.provider.waitForTransaction(
+      tx.transaction_hash,
+    );
     console.log("Commit transaction confirmed:", receipt.status);
 
-    return receipt.status; // optionally return status
+    return receipt.status;
   } catch (error) {
     console.error("Error committing bid on StarkNet:", error);
     throw new Error("Commit failed on StarkNet");
   }
 }
+
+// ----------------------------
+// Reveal Bid Function
+// ----------------------------
+async function revealBid(bidAmount, secret) {
+  try {
+    const tx = await auctionContract.invoke("reveal_bid", {
+      bid_amount: bidAmount.toString(),
+      secret: secret.toString(),
+    });
+
+    console.log("Reveal transaction sent:", tx.transaction_hash);
+
+    const receipt = await account.provider.waitForTransaction(
+      tx.transaction_hash,
+    );
+    console.log("Reveal transaction confirmed:", receipt.status);
+
+    return receipt.status;
+  } catch (error) {
+    console.error("Error revealing bid on StarkNet:", error);
+    throw new Error("Reveal failed on StarkNet");
+  }
+}
+
 // ===================== Get Single Auction =====================
 const getSingleAuction = async (req, res) => {
   try {
