@@ -222,6 +222,7 @@ module.exports = {
   getAuctions,
   getSingleAuction,
   placeBid,
+  commitBid,
   revealBidController,
   getBidHistory,
   getFairnessMetrics,
