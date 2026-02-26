@@ -1,18 +1,22 @@
-const { Provider, Account } = require("starknet");
+import { Provider, Account } from "starknet";
 
 const provider = new Provider({
-  nodeUrl: "https://starknet-sepolia.public.blastapi.io",
+  nodeUrl: process.env.STARKNET_RPC,
 });
 
 const adminAddress = process.env.ADMIN_ADDRESS;
 const adminPrivateKey = process.env.ADMIN_PRIVATE_KEY;
 
-if (!adminAddress || !adminPrivateKey) {
-  throw new Error(
-    "ADMIN_ADDRESS or ADMIN_PRIVATE_KEY not set in environment variables",
-  );
+if (!adminAddress) {
+  throw new Error("ADMIN_ADDRESS is not set");
 }
 
-// Backend wallet
-const account = new Account(provider, adminAddress, adminPrivateKey);
-module.exports = { account };
+if (!adminPrivateKey) {
+  throw new Error("ADMIN_PRIVATE_KEY is not set");
+}
+
+export const account = new Account(
+  provider,
+  adminAddress,
+  adminPrivateKey
+);
