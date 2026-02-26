@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import PageLayout from "@/components/layout/PageLayout";
-import CountdownTimer from "@/components/auction/CountdownTimer";
-import { ArrowLeft, Eye, Trophy, Info } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { getSingleAuction, revealBidAPI, getBidHistory } from "@/lib/api";
-import { useWallet } from "@/context/WalletContext"; // ✅ wallet context
+import { useWallet } from "@/context/WalletContext";
 
 const RevealPhase: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { account, address, connectWallet } = useWallet(); // ✅ wallet
+  const { account, address, connectWallet } = useWallet();
 
   const [auction, setAuction] = useState<any>(null);
   const [bids, setBids] = useState<any[]>([]);
@@ -18,24 +17,40 @@ const RevealPhase: React.FC = () => {
   const [secret, setSecret] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [error, setError] = useState("");
+  const [isRevealPhase, setIsRevealPhase] = useState(false);
+
+  const fetchAuction = async () => {
+    if (!id) return;
+
+    try {
+      const auctionData = await getSingleAuction(id);
+      setAuction(auctionData);
+
+      const now = new Date();
+      const startReveal = new Date(auctionData.endtime);
+      const endReveal = new Date(auctionData.revealTime);
+
+      setIsRevealPhase(
+        auctionData.status === "commit" || auctionData.status === "reveal"
+          ? now >= startReveal && now <= endReveal
+          : false
+      );
+
+      const bidsData = await getBidHistory(id);
+      setBids(bidsData);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load auction data.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const load = async () => {
-      if (!id) return;
-      try {
-        const auctionData = await getSingleAuction(id);
-        setAuction(auctionData);
+    fetchAuction();
 
-        const bidsData = await getBidHistory(id);
-        setBids(bidsData);
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load auction data.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    const interval = setInterval(fetchAuction, 30000); // auto-refresh every 30s
+    return () => clearInterval(interval);
   }, [id]);
 
   const handleReveal = async () => {
@@ -52,9 +67,7 @@ const RevealPhase: React.FC = () => {
     try {
       setError("");
       await revealBidAPI(id!, { amount: parseFloat(bidAmount), secret, bidder: address });
-
       setRevealed(true);
-
       const updatedBids = await getBidHistory(id!);
       setBids(updatedBids);
     } catch (err) {
@@ -82,7 +95,6 @@ const RevealPhase: React.FC = () => {
   return (
     <PageLayout>
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        {/* Back */}
         <button
           onClick={() => navigate(`/auction/${auction._id}`)}
           className="flex items-center gap-2 text-muted-foreground text-sm mb-4"
@@ -104,7 +116,6 @@ const RevealPhase: React.FC = () => {
           </div>
         ) : (
           <div className="grid lg:grid-cols-2 gap-6">
-            {/* Reveal Form */}
             <div className="card-glass p-6 space-y-4">
               <h2 className="text-lg font-bold">Reveal Your Bid</h2>
               {error && <p className="text-xs text-destructive">{error}</p>}
@@ -115,6 +126,7 @@ const RevealPhase: React.FC = () => {
                 value={bidAmount}
                 onChange={(e) => setBidAmount(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl bg-muted border"
+                disabled={!isRevealPhase}
               />
               <input
                 type="text"
@@ -122,16 +134,19 @@ const RevealPhase: React.FC = () => {
                 value={secret}
                 onChange={(e) => setSecret(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl bg-muted border"
+                disabled={!isRevealPhase}
               />
               <button
                 onClick={handleReveal}
-                className="w-full py-3 bg-gradient-gold rounded-xl font-bold"
+                disabled={!isRevealPhase || revealed}
+                className={`w-full py-3 bg-gradient-gold rounded-xl font-bold ${
+                  (!isRevealPhase || revealed) && "opacity-50 cursor-not-allowed"
+                }`}
               >
                 {revealed ? "Revealed!" : "Reveal Bid"}
               </button>
             </div>
 
-            {/* Revealed Bids */}
             <div className="card-glass p-6">
               <h2 className="text-lg font-bold mb-4">Revealed Bids</h2>
               {bids.length === 0 ? (

@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import PageLayout from "@/components/layout/PageLayout";
-import { ArrowLeft, Hash, Lock, RefreshCw, Shield, Info } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { getSingleAuction, commitBidAPI } from "@/lib/api";
-import { useWallet } from "@/context/WalletContext"; // <-- wallet context
-
-const phases = ["Product", "Commit", "Reveal", "Finalized"];
+import { useWallet } from "@/context/WalletContext";
 
 const CommitPhase: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { account, address, connectWallet } = useWallet(); // <-- dynamic wallet
+  const { account, address, connectWallet } = useWallet();
 
   const [auction, setAuction] = useState<any>(null);
   const [bidAmount, setBidAmount] = useState("");
@@ -19,22 +17,33 @@ const CommitPhase: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<{ bid?: string; secret?: string }>({});
   const [loading, setLoading] = useState(true);
+  const [isCommitPhase, setIsCommitPhase] = useState(false);
 
-  const isActive = auction?.status === "active";
+  const fetchAuction = async () => {
+    if (!id) return;
+
+    try {
+      const data = await getSingleAuction(id);
+      setAuction(data);
+
+      const now = new Date();
+      const end = new Date(data.endtime);
+
+      setIsCommitPhase(data.status === "commit" && now < end);
+    } catch (err) {
+      console.error("Failed to fetch auction:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!id) return;
-    const fetchAuction = async () => {
-      try {
-        const data = await getSingleAuction(id);
-        setAuction(data);
-      } catch (err) {
-        console.error("Failed to fetch auction:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchAuction();
+
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchAuction, 30000);
+
+    return () => clearInterval(interval);
   }, [id]);
 
   const generateHash = () => {
@@ -72,7 +81,7 @@ const CommitPhase: React.FC = () => {
     try {
       await commitBidAPI(auction._id, {
         commitment: hash,
-        bidder: address, // <-- dynamic wallet address
+        bidder: address,
       });
       setSubmitted(true);
     } catch (err) {
@@ -122,10 +131,9 @@ const CommitPhase: React.FC = () => {
         ) : (
           <div
             className={`card-glass p-6 space-y-5 ${
-              !isActive ? "opacity-60 pointer-events-none" : ""
+              !isCommitPhase ? "opacity-60 pointer-events-none" : ""
             }`}
           >
-            {/* Bid Form */}
             <div className="space-y-4">
               <div>
                 <label className="font-body text-sm text-muted-foreground">
@@ -137,6 +145,7 @@ const CommitPhase: React.FC = () => {
                   onChange={(e) => setBidAmount(e.target.value)}
                   className="w-full mt-1 p-3 rounded-xl border border-border focus:border-gold focus:ring-1 focus:ring-gold outline-none"
                   placeholder="Enter your bid"
+                  disabled={!isCommitPhase}
                 />
                 {errors.bid && (
                   <p className="text-xs text-destructive mt-1">{errors.bid}</p>
@@ -153,6 +162,7 @@ const CommitPhase: React.FC = () => {
                   onChange={(e) => setSecret(e.target.value)}
                   className="w-full mt-1 p-3 rounded-xl border border-border focus:border-gold focus:ring-1 focus:ring-gold outline-none"
                   placeholder="Enter secret phrase"
+                  disabled={!isCommitPhase}
                 />
                 {errors.secret && (
                   <p className="text-xs text-destructive mt-1">{errors.secret}</p>
@@ -162,7 +172,8 @@ const CommitPhase: React.FC = () => {
               <div className="flex items-center gap-3">
                 <button
                   onClick={generateHash}
-                  className="flex-1 py-3 bg-accent/10 hover:bg-accent/20 rounded-xl font-body font-semibold transition-all"
+                  disabled={!isCommitPhase}
+                  className="flex-1 py-3 bg-accent/10 hover:bg-accent/20 rounded-xl font-body font-semibold transition-all disabled:opacity-50"
                 >
                   Generate Hash
                 </button>
@@ -173,8 +184,8 @@ const CommitPhase: React.FC = () => {
 
               <button
                 onClick={handleSubmit}
-                disabled={submitted}
-                className="w-full py-3 bg-gradient-gold rounded-xl font-heading font-bold text-accent-foreground hover:opacity-90 transition-all"
+                disabled={submitted || !isCommitPhase}
+                className="w-full py-3 bg-gradient-gold rounded-xl font-heading font-bold text-accent-foreground hover:opacity-90 transition-all disabled:opacity-50"
               >
                 {submitted ? "Submitted" : "Commit Bid"}
               </button>

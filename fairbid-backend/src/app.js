@@ -7,7 +7,7 @@ const revealRoutes = require("./routes/revealRoutes")
 const app = express();
 const fs = require("fs")
 const path = require("path")
-
+const updateStatus = require("./jobs/updateAuctionStatus")
 // Define uploads floder path
 const uploadsPath = path.join(__dirname, "uploads")
 // check if uploads floder exists, create if not

@@ -66,7 +66,10 @@ const getSingleAuction = async (req, res) => {
   try {
     const auction = await Auction.findById(req.params.auctionId);
     if (!auction) return res.status(404).json({ message: "Auction not found" });
-    res.json(auction);
+    res.json({
+      ...auction.toObject(),
+      status: auction.currentPhase,
+    });
   } catch (error) {
     console.error("Get single auction error:", error);
     res.status(500).json({ message: "Server error" });
@@ -88,20 +91,25 @@ const placeBid = async (req, res) => {
     const auction = await Auction.findById(auctionId);
     if (!auction) return res.status(404).json({ message: "Auction not found" });
 
-    if (new Date() > auction.endtime) {
-      return res.status(400).json({ message: "Auction has ended" });
+    // Use virtual field to check if the auction is in commit phase
+    if (auction.currentPhase !== "commit") {
+      return res.status(400).json({ message: `Auction is not in commit phase. Current phase: ${auction.currentPhase}` });
     }
 
+    // Create the commitment hash
     const commitment = BigInt(
-      "0x" + crypto.createHash("sha256").update(bidAmount + secret).digest("hex")
+      "0x" + require("crypto").createHash("sha256").update(bidAmount + secret).digest("hex")
     );
 
+    // Commit bid to Starknet
     await commitBid(commitment, BigInt(bidAmount));
 
+    // Save bid locally
     const bid = new Bid({
       auctionId,
       bidderWallet,
-      amount: bidAmount,
+      commitment: commitment.toString(), // store as string
+      deposit: bidAmount,
       revealed: false,
     });
     await bid.save();
