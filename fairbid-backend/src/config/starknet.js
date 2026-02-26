@@ -20,4 +20,4 @@ const account = new Account(
   adminAddress,
   adminPrivateKey
 );
-module.exports{account};
+module.exports={account};
