@@ -10,8 +10,8 @@ frontend/build/
 frontend/node_modules/
 
 # Backend node modules and build
-backend/node_modules/
-backend/dist/
+fairbid-backend/node_modules/
+fairbid-backend/.env
 
 # Starknet artifacts
 starknet/.cairo_contracts/
