@@ -1,22 +1,18 @@
-console.log("====== ENV DEBUG ======");
-console.log("All ENV keys:", Object.keys(process.env));
-console.log("ADMIN_ADDRESS:", process.env.ADMIN_ADDRESS);
-console.log("ADMIN_PRIVATE_KEY exists:", !!process.env.ADMIN_PRIVATE_KEY);
-console.log("STARKNET_RPC:", process.env.STARKNET_RPC);
-console.log("=======================");
 const { Provider, Account } = require("starknet");
 
+const RPC = process.env.STARKNET_RPC;
+const ADDRESS = process.env.ADMIN_ADDRESS;
+const PRIVATE_KEY = process.env.ADMIN_PRIVATE_KEY;
+
+// ✅ Use explicit RPC provider
 const provider = new Provider({
-  nodeUrl: process.env.STARKNET_RPC,
+  nodeUrl: RPC,
 });
 
-const adminAddress = process.env.ADMIN_ADDRESS;
-const adminPrivateKey = process.env.ADMIN_PRIVATE_KEY;
+// ✅ Create admin account
+const adminAccount = new Account(provider, ADDRESS, PRIVATE_KEY);
 
-if (!adminAddress || !adminPrivateKey) {
-  throw new Error("ADMIN_ADDRESS or ADMIN_PRIVATE_KEY missing");
-}
-
-const account = new Account(provider, adminAddress, adminPrivateKey);
-
-module.exports = { account };
+module.exports = {
+  provider,
+  adminAccount,
+};
