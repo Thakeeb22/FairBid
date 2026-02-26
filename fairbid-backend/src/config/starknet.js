@@ -1,3 +1,4 @@
+console.log ('ACCOUNT ADDRESS:', process.env.ADMIN_ADDRESS)
 const { Provider, Account } = require("starknet");
 
 const RPC = process.env.STARKNET_RPC;
