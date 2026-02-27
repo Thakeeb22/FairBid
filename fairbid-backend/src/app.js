@@ -58,7 +58,32 @@ app.post('/api/debug/test-bid', async (req, res) => {
     bidId: bid._id 
   });
 });
+// app.js - ADD THIS AT THE VERY END (after all other routes)
 
+// ✅ Serve index.html for any non-API route (fixes SPA refresh 404s)
+app.get('*', (req, res) => {
+  // Don't intercept API routes
+  if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+    return res.status(404).json({ message: 'Not found' });
+  }
+  
+  // Serve frontend index.html for all other routes
+  const path = require('path');
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'build', 'index.html'));
+});
+// app.js - ADD AT VERY END (after all other routes)
+
+
+// Serve frontend index.html for any non-API route (fixes SPA 404s)
+app.get("*", (req, res) => {
+  // Don't intercept API or uploads
+  if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) {
+    return res.status(404).json({ message: "Not found" });
+  }
+  
+  // Serve frontend build index.html
+  res.sendFile(path.join(__dirname, "..", "frontend", "build", "index.html"));
+});
 // Auto-close auctions every 60 seconds
 setInterval(autoCloseAuctions, 60000);
 
