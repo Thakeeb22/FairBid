@@ -4,29 +4,16 @@ const Bid = require("../models/Bid");
 const { account } = require("../config/starknet");
 const auctionAbi = require("../abi/auction.json");
 
+// 🔧 MOCK MODE: Set to true to skip real blockchain calls (for testing without funds)
+const MOCK_MODE = process.env.MOCK_MODE === 'true';
+
 const AUCTION_CONTRACT_ADDRESS = process.env.FAIRBID_CONTRACT_ADDRESS;
-if (!AUCTION_CONTRACT_ADDRESS) {
+if (!AUCTION_CONTRACT_ADDRESS && !MOCK_MODE) {
   throw new Error("❌ FAIRBID_CONTRACT_ADDRESS not set");
 }
 
-const auctionContract = new Contract(auctionAbi, AUCTION_CONTRACT_ADDRESS, account);
-
-// 🔄 Retry helper with exponential backoff
-async function withRetry(fn, maxRetries = 3, delayMs = 1000) {
-  let lastError;
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      console.warn(`⚠️ Attempt ${attempt} failed: ${error.message}`);
-      if (attempt < maxRetries) {
-        await new Promise(res => setTimeout(res, delayMs * attempt));
-      }
-    }
-  }
-  throw lastError;
-}
+// Only create contract if not in mock mode
+const auctionContract = MOCK_MODE ? null : new Contract(auctionAbi, AUCTION_CONTRACT_ADDRESS, account);
 
 // ----------------------------
 // Commit Bid Function
@@ -36,23 +23,25 @@ async function commitBid(commitment, bidAmount) {
     console.log("🔄 Committing bid:", {
       commitment: commitment.toString(),
       bidAmount: bidAmount.toString(),
-      contract: AUCTION_CONTRACT_ADDRESS,
+      mockMode: MOCK_MODE,
     });
 
-    const result = await withRetry(async () => {
-      // ✅ starknet v9+: args as ARRAY in parameter order
-      return await auctionContract.invoke("commit_bid", [
-        commitment.toString(),
-        bidAmount.toString()
-      ]);
-    });
+    if (MOCK_MODE) {
+      // 🎭 Mock successful transaction
+      console.log("🎭 [MOCK] Simulating successful commit transaction");
+      await new Promise(res => setTimeout(res, 500)); // Simulate network delay
+      return "ACCEPTED_ON_L2"; // Return expected status
+    }
 
-    console.log("✅ Commit transaction sent:", result.transaction_hash);
-
-    const receipt = await withRetry(() =>
-      account.provider.waitForTransaction(result.transaction_hash)
-    );
+    // ✅ Real blockchain call
+    const tx = await auctionContract.invoke("commit_bid", [
+      commitment.toString(),
+      bidAmount.toString()
+    ]);
     
+    console.log("✅ Commit transaction sent:", tx.transaction_hash);
+
+    const receipt = await account.provider.waitForTransaction(tx.transaction_hash);
     console.log("✅ Commit confirmed:", receipt.status);
     return receipt.status;
     
@@ -60,7 +49,7 @@ async function commitBid(commitment, bidAmount) {
     console.error("❌ Commit failed:", {
       message: error.message,
       name: error.name,
-      cause: error.cause?.message,
+      mockMode: MOCK_MODE,
     });
     throw new Error(`Commit failed: ${error.message}`);
   }
@@ -74,21 +63,25 @@ async function revealBid(bidAmount, secret) {
     console.log("🔄 Revealing bid:", {
       bidAmount: bidAmount.toString(),
       secret: secret.toString(),
+      mockMode: MOCK_MODE,
     });
 
-    const result = await withRetry(async () => {
-      return await auctionContract.invoke("reveal_bid", [
-        bidAmount.toString(),
-        secret.toString()
-      ]);
-    });
+    if (MOCK_MODE) {
+      // 🎭 Mock successful transaction
+      console.log("🎭 [MOCK] Simulating successful reveal transaction");
+      await new Promise(res => setTimeout(res, 500));
+      return "ACCEPTED_ON_L2";
+    }
 
-    console.log("✅ Reveal transaction sent:", result.transaction_hash);
+    // ✅ Real blockchain call
+    const tx = await auctionContract.invoke("reveal_bid", [
+      bidAmount.toString(),
+      secret.toString()
+    ]);
 
-    const receipt = await withRetry(() =>
-      account.provider.waitForTransaction(result.transaction_hash)
-    );
-    
+    console.log("✅ Reveal transaction sent:", tx.transaction_hash);
+
+    const receipt = await account.provider.waitForTransaction(tx.transaction_hash);
     console.log("✅ Reveal confirmed:", receipt.status);
     return receipt.status;
     
@@ -100,6 +93,7 @@ async function revealBid(bidAmount, secret) {
     throw new Error(`Reveal failed: ${error.message}`);
   }
 }
+
 // ----------------------------
 // Get Highest Bid & Bidder (local DB only)
 // ----------------------------
@@ -127,4 +121,5 @@ module.exports = {
   getHighestBid,
   getHighestBidder,
   auctionContract,
+  MOCK_MODE, // Export for debugging
 };
