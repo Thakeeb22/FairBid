@@ -79,6 +79,7 @@ const getSingleAuction = async (req, res) => {
 // -----------------------------
 // Place Bid (Commit Phase)
 // -----------------------------
+// src/controllers/auctionController.js - FIXED placeBid()
 const placeBid = async (req, res) => {
   try {
     const { auctionId } = req.params;
@@ -91,21 +92,22 @@ const placeBid = async (req, res) => {
     const auction = await Auction.findById(auctionId);
     if (!auction) return res.status(404).json({ message: "Auction not found" });
 
-    // ✅ Fixed: no trailing space in string comparison
+    // ✅ FIXED: No trailing space in string comparison
     if (auction.currentPhase !== "commit") {
-      return res.status(400).json({ message: `Auction is not in commit phase. Current phase: ${auction.currentPhase}` });
+      return res.status(400).json({ 
+        message: `Auction is not in commit phase. Current phase: ${auction.currentPhase}` 
+      });
     }
 
-    // ✅ Fixed: BigInt syntax + clean crypto import
-    const crypto = require("crypto");
+    // ✅ FIXED: Clean BigInt + crypto usage (no spaces!)
     const commitment = BigInt(
       "0x" + crypto.createHash("sha256").update(bidAmount + secret).digest("hex")
     );
 
-    // ✅ Commit to StarkNet
+    // Commit bid to StarkNet
     await commitBid(commitment, BigInt(bidAmount));
 
-    // ✅ Fixed: toString() without space
+    // ✅ FIXED: toString() without space
     const bid = new Bid({
       auctionId,
       bidderWallet,
@@ -114,6 +116,10 @@ const placeBid = async (req, res) => {
       revealed: false,
     });
     await bid.save();
+
+    // ✅ ADD THIS: Update auction to trigger virtual field recalc
+    auction.lastBidTime = new Date();
+    await auction.save();
 
     res.status(200).json({ message: "Bid committed successfully" });
   } catch (error) {

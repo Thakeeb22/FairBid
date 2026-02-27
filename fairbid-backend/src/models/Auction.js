@@ -30,5 +30,20 @@ auctionSchema.virtual("currentPhase").get(function () {
   if (now >= this.endtime && now <= this.revealTime) return "reveal";
   return "finalized";
 });
+// At the END of your schema definition, BEFORE module.exports:
 
+// ✅ Enable virtuals in toJSON and toObject
+auctionSchema.set('toJSON', { virtuals: true });
+auctionSchema.set('toObject', { virtuals: true });
+
+// ✅ Ensure currentPhase virtual is defined correctly
+auctionSchema.virtual('currentPhase').get(function() {
+  const now = new Date();
+  const endTime = new Date(this.endtime);
+  const revealTime = new Date(this.revealTime);
+  
+  if (now < endTime) return 'commit';
+  if (now < revealTime) return 'reveal';
+  return 'closed';
+});
 module.exports = mongoose.model("Auction", auctionSchema);

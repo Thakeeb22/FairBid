@@ -1,3 +1,4 @@
+// src/utils/starknetService.js - FIXED ✅
 const { Contract } = require("starknet");
 const Auction = require("../models/Auction");
 const Bid = require("../models/Bid");
@@ -26,14 +27,14 @@ async function commitBid(commitment, bidAmount) {
       mockMode: MOCK_MODE,
     });
 
+    // ✅ CHECK MOCK MODE FIRST - before any contract calls
     if (MOCK_MODE) {
-      // 🎭 Mock successful transaction
       console.log("🎭 [MOCK] Simulating successful commit transaction");
       await new Promise(res => setTimeout(res, 500)); // Simulate network delay
-      return "ACCEPTED_ON_L2"; // Return expected status
+      return "ACCEPTED_ON_L2";
     }
 
-    // ✅ Real blockchain call
+    // ✅ Real blockchain call (only runs if MOCK_MODE is false)
     const tx = await auctionContract.invoke("commit_bid", [
       commitment.toString(),
       bidAmount.toString()
@@ -66,8 +67,8 @@ async function revealBid(bidAmount, secret) {
       mockMode: MOCK_MODE,
     });
 
+    // ✅ CHECK MOCK MODE FIRST
     if (MOCK_MODE) {
-      // 🎭 Mock successful transaction
       console.log("🎭 [MOCK] Simulating successful reveal transaction");
       await new Promise(res => setTimeout(res, 500));
       return "ACCEPTED_ON_L2";
@@ -121,5 +122,5 @@ module.exports = {
   getHighestBid,
   getHighestBidder,
   auctionContract,
-  MOCK_MODE, // Export for debugging
+  MOCK_MODE,
 };
