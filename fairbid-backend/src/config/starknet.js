@@ -1,19 +1,17 @@
-console.log ('ACCOUNT ADDRESS:', process.env.ADMIN_ADDRESS)
-const { Provider, Account } = require("starknet");
+require('dotenv').config();
+const { Account, ec, json, Provider } = require('starknet');
 
-const RPC = process.env.STARKNET_RPC;
-const ADDRESS = process.env.ADMIN_ADDRESS;
-const PRIVATE_KEY = process.env.ADMIN_PRIVATE_KEY;
-
-//  RPC provider
-const provider = new Provider({
-  nodeUrl: RPC,
+const provider = new Provider({ 
+  nodeUrl: process.env.STARKNET_RPC 
 });
 
-//  Create admin account
-const adminAccount = new Account(provider, ADDRESS, PRIVATE_KEY);
-
-module.exports = {
+const account = new Account(
   provider,
-  adminAccount,
-};
+  process.env.ADMIN_ADDRESS,
+  process.env.ADMIN_PRIVATE_KEY
+);
+
+console.log('ACCOUNT ADDRESS:', process.env.ADMIN_ADDRESS);
+console.log('PRIVATE KEY exists:', !!process.env.ADMIN_PRIVATE_KEY);
+
+module.exports = { account, provider };
