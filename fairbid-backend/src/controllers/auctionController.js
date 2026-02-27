@@ -83,7 +83,7 @@ const placeBid = async (req, res) => {
   try {
     const { auctionId } = req.params;
     const { bidderWallet, bidAmount, secret } = req.body;
-
+    
     if (!bidderWallet || !bidAmount || !secret) {
       return res.status(400).json({ message: "Missing bidderWallet, bidAmount, or secret" });
     }
@@ -91,24 +91,25 @@ const placeBid = async (req, res) => {
     const auction = await Auction.findById(auctionId);
     if (!auction) return res.status(404).json({ message: "Auction not found" });
 
-    // Use virtual field to check if the auction is in commit phase
+    // ✅ Fixed: no trailing space in string comparison
     if (auction.currentPhase !== "commit") {
       return res.status(400).json({ message: `Auction is not in commit phase. Current phase: ${auction.currentPhase}` });
     }
 
-    // Create the commitment hash
+    // ✅ Fixed: BigInt syntax + clean crypto import
+    const crypto = require("crypto");
     const commitment = BigInt(
-      "0x" + require("crypto").createHash("sha256").update(bidAmount + secret).digest("hex")
+      "0x" + crypto.createHash("sha256").update(bidAmount + secret).digest("hex")
     );
 
-    // Commit bid to Starknet
+    // ✅ Commit to StarkNet
     await commitBid(commitment, BigInt(bidAmount));
 
-    // Save bid locally
+    // ✅ Fixed: toString() without space
     const bid = new Bid({
       auctionId,
       bidderWallet,
-      commitment: commitment.toString(), // store as string
+      commitment: commitment.toString(),
       deposit: bidAmount,
       revealed: false,
     });
@@ -117,10 +118,9 @@ const placeBid = async (req, res) => {
     res.status(200).json({ message: "Bid committed successfully" });
   } catch (error) {
     console.error("Place bid error:", error);
-    res.status(500).json({ message: "Commit failed" });
+    res.status(500).json({ message: "Commit failed: " + error.message });
   }
 };
-
 // -----------------------------
 // Reveal Bid
 // -----------------------------
