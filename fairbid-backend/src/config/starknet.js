@@ -1,5 +1,20 @@
 require('dotenv').config();
-
+// TEMP DIAGNOSTIC - remove after debugging
+console.log('🌐 PROCESS.ENV SNAPSHOT');
+['STARKNET_RPC', 'ADMIN_ADDRESS', 'ADMIN_PRIVATE_KEY'].forEach(key => {
+  const val = process.env[key];
+  if (val) {
+    console.log(`${key}:`, {
+      type: typeof val,
+      length: val.length,
+      first10: val.substring(0, 10),
+      last10: val.substring(val.length - 10),
+      charCodes: val.split('').slice(0, 15).map(c => c.charCodeAt(0))
+    });
+  } else {
+    console.log(`${key}: ❌ UNDEFINED`);
+  }
+});
 // 🔍 DEBUG: Log env var status BEFORE any starknet calls
 console.log('🔍 ENV CHECK:', {
   STARKNET_RPC: process.env.STARKNET_RPC ? '✅' : '❌',
