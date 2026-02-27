@@ -1,54 +1,41 @@
+// src/config/starknet.js
 require('dotenv').config();
-// TEMP DIAGNOSTIC - remove after debugging
-console.log('🌐 PROCESS.ENV SNAPSHOT');
-['STARKNET_RPC', 'ADMIN_ADDRESS', 'ADMIN_PRIVATE_KEY'].forEach(key => {
-  const val = process.env[key];
-  if (val) {
-    console.log(`${key}:`, {
-      type: typeof val,
-      length: val.length,
-      first10: val.substring(0, 10),
-      last10: val.substring(val.length - 10),
-      charCodes: val.split('').slice(0, 15).map(c => c.charCodeAt(0))
-    });
-  } else {
-    console.log(`${key}: ❌ UNDEFINED`);
-  }
-});
-// 🔍 DEBUG: Log env var status BEFORE any starknet calls
-console.log('🔍 ENV CHECK:', {
-  STARKNET_RPC: process.env.STARKNET_RPC ? '✅' : '❌',
-  ADMIN_ADDRESS: process.env.ADMIN_ADDRESS ? `✅ (len=${process.env.ADMIN_ADDRESS.length})` : '❌',
-  ADMIN_PRIVATE_KEY: process.env.ADMIN_PRIVATE_KEY ? '✅ (hidden)' : '❌',
-  FAIRBID_CONTRACT_ADDRESS: process.env.FAIRBID_CONTRACT_ADDRESS ? '✅' : '❌',
-});
 
-// 🔒 Validate required vars
+// 🔒 Validate env vars exist
 const required = ['STARKNET_RPC', 'ADMIN_ADDRESS', 'ADMIN_PRIVATE_KEY', 'FAIRBID_CONTRACT_ADDRESS'];
 for (const key of required) {
-  if (!process.env[key]?.trim()) {
-    throw new Error(`🚨 FATAL: "${key}" is missing or empty in Render environment variables.`);
+  const val = process.env[key];
+  if (!val || typeof val !== 'string' || !val.trim()) {
+    throw new Error(`🚨 FATAL: "${key}" is missing or invalid. Value: ${JSON.stringify(val)}`);
   }
 }
 
-const { Account, Provider } = require('starknet');
-
-// 🧹 Sanitize inputs: remove quotes, whitespace, ensure 0x prefix
-const sanitizeHex = (val) => {
-  let cleaned = val.trim().replace(/^["']|["']$/g, ''); // Remove surrounding quotes
-  if (!cleaned.startsWith('0x')) cleaned = '0x' + cleaned;
+// 🧹 Sanitize hex values: remove quotes, whitespace, force lowercase, ensure 0x prefix
+const sanitizeHex = (val, label) => {
+  let cleaned = String(val).trim().replace(/^["']|["']$/g, '');
+  if (!cleaned.toLowerCase().startsWith('0x')) cleaned = '0x' + cleaned;
+  cleaned = '0x' + cleaned.slice(2).replace(/[^0-9a-fA-F]/g, '').toLowerCase();
+  if (!/^0x[0-9a-f]{1,64}$/.test(cleaned)) {
+    throw new Error(`${label} failed validation: "${cleaned}"`);
+  }
   return cleaned;
 };
 
-const provider = new Provider({
-  nodeUrl: process.env.STARKNET_RPC.trim()
-});
+// 🔍 Log what we're using (hide sensitive parts)
+console.log('🔐 Starknet Config:');
+console.log('   RPC:', process.env.STARKNET_RPC.trim());
+console.log('   Address:', sanitizeHex(process.env.ADMIN_ADDRESS, 'ADMIN_ADDRESS'));
+console.log('   PrivateKey: 0x' + sanitizeHex(process.env.ADMIN_PRIVATE_KEY, 'ADMIN_PRIVATE_KEY').slice(2, 10) + '...');
 
-const account = new Account(
-  provider,
-  sanitizeHex(process.env.ADMIN_ADDRESS),
-  sanitizeHex(process.env.ADMIN_PRIVATE_KEY)
-);
+const { Account, Provider } = require('starknet');
 
-console.log('✅ Starknet initialized. Account:', account.address);
+// 🚀 Initialize with sanitized values
+const provider = new Provider({ nodeUrl: process.env.STARKNET_RPC.trim() });
+const address = sanitizeHex(process.env.ADMIN_ADDRESS, 'ADMIN_ADDRESS');
+const privateKey = sanitizeHex(process.env.ADMIN_PRIVATE_KEY, 'ADMIN_PRIVATE_KEY');
+
+console.log('🔄 Creating Account...');
+const account = new Account(provider, address, privateKey);
+console.log('✅ Account created:', account.address);
+
 module.exports = { account, provider };
