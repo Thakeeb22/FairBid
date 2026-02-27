@@ -1,4 +1,3 @@
-// src/utils/starknetService.js - FOR starknet@9.2.1 ✅
 const { Contract } = require("starknet");
 const Auction = require("../models/Auction");
 const Bid = require("../models/Bid");
@@ -10,8 +9,24 @@ if (!AUCTION_CONTRACT_ADDRESS) {
   throw new Error("❌ FAIRBID_CONTRACT_ADDRESS not set");
 }
 
-// Contract instance
 const auctionContract = new Contract(auctionAbi, AUCTION_CONTRACT_ADDRESS, account);
+
+// 🔄 Retry helper with exponential backoff
+async function withRetry(fn, maxRetries = 3, delayMs = 1000) {
+  let lastError;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      console.warn(`⚠️ Attempt ${attempt} failed: ${error.message}`);
+      if (attempt < maxRetries) {
+        await new Promise(res => setTimeout(res, delayMs * attempt));
+      }
+    }
+  }
+  throw lastError;
+}
 
 // ----------------------------
 // Commit Bid Function
@@ -21,32 +36,38 @@ async function commitBid(commitment, bidAmount) {
     console.log("🔄 Committing bid:", {
       commitment: commitment.toString(),
       bidAmount: bidAmount.toString(),
+      contract: AUCTION_CONTRACT_ADDRESS,
     });
 
-    // ✅ starknet v9+: pass args as ARRAY in parameter order
-    const tx = await auctionContract.invoke(
-      "commit_bid",
-      [commitment.toString(), bidAmount.toString()] // ← Array, not object!
+    const result = await withRetry(async () => {
+      // ✅ starknet v9+: args as ARRAY in parameter order
+      return await auctionContract.invoke("commit_bid", [
+        commitment.toString(),
+        bidAmount.toString()
+      ]);
+    });
+
+    console.log("✅ Commit transaction sent:", result.transaction_hash);
+
+    const receipt = await withRetry(() =>
+      account.provider.waitForTransaction(result.transaction_hash)
     );
     
-    console.log("Commit transaction sent:", tx.transaction_hash);
-
-    const receipt = await account.provider.waitForTransaction(tx.transaction_hash);
-    console.log("Commit transaction confirmed:", receipt.status);
-
+    console.log("✅ Commit confirmed:", receipt.status);
     return receipt.status;
+    
   } catch (error) {
-    console.error("❌ Error committing bid:", {
+    console.error("❌ Commit failed:", {
       message: error.message,
       name: error.name,
-      stack: error.stack?.split('\n')[1],
+      cause: error.cause?.message,
     });
     throw new Error(`Commit failed: ${error.message}`);
   }
 }
 
 // ----------------------------
-// Reveal Bid Function
+// Reveal Bid Function  
 // ----------------------------
 async function revealBid(bidAmount, secret) {
   try {
@@ -55,27 +76,30 @@ async function revealBid(bidAmount, secret) {
       secret: secret.toString(),
     });
 
-    // ✅ starknet v9+: pass args as ARRAY in parameter order
-    const tx = await auctionContract.invoke(
-      "reveal_bid",
-      [bidAmount.toString(), secret.toString()] // ← Array, not object!
+    const result = await withRetry(async () => {
+      return await auctionContract.invoke("reveal_bid", [
+        bidAmount.toString(),
+        secret.toString()
+      ]);
+    });
+
+    console.log("✅ Reveal transaction sent:", result.transaction_hash);
+
+    const receipt = await withRetry(() =>
+      account.provider.waitForTransaction(result.transaction_hash)
     );
     
-    console.log("Reveal transaction sent:", tx.transaction_hash);
-
-    const receipt = await account.provider.waitForTransaction(tx.transaction_hash);
-    console.log("Reveal transaction confirmed:", receipt.status);
-
+    console.log("✅ Reveal confirmed:", receipt.status);
     return receipt.status;
+    
   } catch (error) {
-    console.error("❌ Error revealing bid:", {
+    console.error("❌ Reveal failed:", {
       message: error.message,
       name: error.name,
     });
     throw new Error(`Reveal failed: ${error.message}`);
   }
 }
-
 // ----------------------------
 // Get Highest Bid & Bidder (local DB only)
 // ----------------------------
