@@ -49,10 +49,27 @@ const createAuction = async (req, res) => {
 // -----------------------------
 // Get All Auctions
 // -----------------------------
+// src/controllers/auctionController.js - Enhanced getAuctions()
 const getAuctions = async (req, res) => {
   try {
     const auctions = await Auction.find().sort({ createdAt: -1 });
-    res.json(auctions);
+    
+    // ✅ Enrich each auction with bid stats
+    const enriched = await Promise.all(auctions.map(async (auction) => {
+      const bidCount = await Bid.countDocuments({ auctionId: auction._id });
+      const uniqueBidders = await Bid.distinct('bidderWallet', { auctionId: auction._id });
+      
+      return {
+        ...auction.toObject(),
+        status: auction.currentPhase, // Virtual field
+        bidCount,                      // NEW: total bids
+        participantCount: uniqueBidders.length, // NEW: unique bidders
+        // Optional: mark if current user has bid (requires auth header)
+        // myBid: req.user ? await Bid.exists({ auctionId: auction._id, bidderWallet: req.user.wallet }) : false
+      };
+    }));
+    
+    res.json(enriched);
   } catch (error) {
     console.error("Get auctions error:", error);
     res.status(500).json({ message: "Server error" });
