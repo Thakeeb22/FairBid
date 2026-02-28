@@ -1,4 +1,4 @@
-// src/components/auction/AuctionCard.tsx - FINAL FIXED VERSION ✅
+// src/components/auction/AuctionCard.tsx - FULLY FIXED ✅
 import React from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -35,7 +35,7 @@ const mapStatus = (status: AuctionPhase): AuctionStatus => {
   const s = String(status || "").toLowerCase();
   if (s === "commit") return "active";
   if (s === "reveal") return "reveal";
-  return "finalized";
+  return "finalized"; // Default for "closed", "finalized", or unknown
 };
 
 // -----------------------------
@@ -43,14 +43,14 @@ const mapStatus = (status: AuctionPhase): AuctionStatus => {
 // -----------------------------
 const BACKEND_URL = (
   import.meta.env.VITE_BACKEND_URL || 
-  "https://fairbid-backend.onrender.com"  // ✅ NO trailing spaces
+  "https://fairbid-backend.onrender.com"
 ).trim();
 
 // -----------------------------
-// Reliable placeholder image URLs - FIXED ✅
+// Reliable placeholder image URL
 // -----------------------------
-const FALLBACK_IMAGE = "https://placehold.co/400x400/EEE/31343C?text=Auction&font=roboto";  // ✅ NO trailing spaces
-const FALLBACK_IMAGE_ERROR = "https://placehold.co/400x400/EEE/31343C?text=No+Image&font=roboto";  // ✅ NO trailing spaces
+const FALLBACK_IMAGE = "https://placehold.co/400x400/EEE/31343C?text=Auction&font=roboto";
+const FALLBACK_IMAGE_ERROR = "https://placehold.co/400x400/EEE/31343C?text=No+Image&font=roboto";
 
 // -----------------------------
 // Props
@@ -86,7 +86,7 @@ const AuctionCard: React.FC<AuctionCardProps> = ({ auction, index = 0 }) => {
           route: `/reveal/${auction._id}`,
           variant: "outline" as const,
         };
-      default:
+      default: // "finalized", "closed", or any unknown status
         return {
           label: "View Results",
           route: `/auction/${auction._id}`,
