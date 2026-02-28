@@ -1,11 +1,12 @@
+// src/pages/Dashboard.tsx - FINAL WORKING VERSION ✅
 import React, { useEffect, useState } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import AuctionCard, { Auction } from "@/components/auction/AuctionCard";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Plus, TrendingUp, Gavel, Star } from "lucide-react";
-import { getAuctions } from "@/lib/api"; // your backend API call
-import { useWallet } from "@/context/WalletContext"; // <-- use WalletContext
+import { getAuctions } from "@/lib/api";
+import { useWallet } from "@/context/WalletContext";
 
 const tabs = ["Active Auctions", "My Bids", "Created Auctions"];
 
@@ -14,79 +15,92 @@ const containerVariants = {
   show: { transition: { staggerChildren: 0.06 } },
 };
 
+// ✅ Type-safe: Omit 'status' from Auction, then add our own
+type EnrichedAuction = Omit<Auction, 'status'> & {
+  status: string;
+  bidCount?: number;
+  participantCount?: number;
+  myBid?: boolean;
+};
+
 const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
-  const [auctions, setAuctions] = useState<Auction[]>([]);
+  const [auctions, setAuctions] = useState<EnrichedAuction[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Use WalletContext instead of useAccount
   const { account, address, connectWallet } = useWallet();
 
   // -----------------------------
-  // Fetch Auctions
+  // Fetch Auctions with Auto-Refresh
   // -----------------------------
   useEffect(() => {
+    let mounted = true;
+    
     const fetchAuctions = async () => {
+      if (!mounted) return;
+      
       try {
-        const data = await getAuctions();
-
-        // Convert backend dates to Date objects
-        const formatted: Auction[] = data.map((a: any) => ({
+        const data = await getAuctions(address);
+        
+        const formatted: EnrichedAuction[] = data.map((a: any) => ({
           ...a,
           endtime: new Date(a.endtime),
           revealTime: new Date(a.revealTime),
+          bidCount: a.bidCount ?? 0,
+          participantCount: a.participantCount ?? 0,
+          myBid: a.myBid ?? false,
+          status: a.status ?? a.currentPhase ?? "commit",
         }));
-
+        
         setAuctions(formatted);
       } catch (err) {
         console.error("Failed to fetch auctions:", err);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
 
     fetchAuctions();
-  }, []);
+    const interval = setInterval(fetchAuctions, 15000);
+    
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [address]);
 
   // -----------------------------
-  // Filter auctions by tab
+  // Filter auctions (type-safe string comparison)
   // -----------------------------
   const filteredAuctions = auctions.filter((a) => {
+    const status = (a.status || "").toLowerCase();
+    
     switch (activeTab) {
       case 0: // Active Auctions
-        return a.status !== "finalized";
+        return !["finalized", "closed"].includes(status);
       case 1: // My Bids
-        return (a as any).myBid === true; // backend should send this
+        return a.myBid === true;
       case 2: // Created Auctions
-        return a.creatorWallet === address; // <-- wallet address from context
+        return a.creatorWallet?.toLowerCase() === address?.toLowerCase();
       default:
         return true;
     }
   });
 
   // -----------------------------
-  // Stats for top cards
+  // Stats calculations
   // -----------------------------
+  const totalBids = auctions.reduce((sum, a) => sum + (a.bidCount ?? 0), 0);
+  const totalParticipants = auctions.reduce((sum, a) => sum + (a.participantCount ?? 0), 0);
+  const activeCount = auctions.filter((a) => 
+    !["finalized", "closed"].includes((a.status || "").toLowerCase())
+  ).length;
+
   const stats = [
-    {
-      label: "Active Auctions",
-      value: auctions.filter((a) => a.status !== "finalized").length,
-      icon: Gavel,
-      trend: "Live",
-    },
-    {
-      label: "Total Auctions",
-      value: auctions.length,
-      icon: TrendingUp,
-      trend: "All time",
-    },
-    {
-      label: "My Bids",
-      value: auctions.filter((a) => (a as any).myBid).length,
-      icon: Star,
-      trend: "Participating",
-    },
+    { label: "Active Auctions", value: activeCount, icon: Gavel, trend: "Live" },
+    { label: "Total Bids", value: totalBids, icon: TrendingUp, trend: "All time" },
+    { label: "Participants", value: totalParticipants, icon: Star, trend: "Unique bidders" },
   ];
 
   return (
@@ -102,19 +116,15 @@ const Dashboard: React.FC = () => {
           <div>
             <p className="font-body text-sm text-muted-foreground mb-1">Welcome back,</p>
             <h1 className="font-heading text-2xl sm:text-3xl font-bold text-foreground">
-              {address || "Guest"} 👋
+              {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Guest"} 👋
             </h1>
           </div>
-
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => {
-              if (!account) {
-                connectWallet();
-              } else {
-                navigate("/create");
-              }
+              if (!account) connectWallet();
+              else navigate("/create");
             }}
             className="flex items-center gap-2 px-5 py-3 bg-gradient-gold rounded-xl font-heading font-semibold text-accent-foreground gold-glow"
           >
@@ -156,7 +166,7 @@ const Dashboard: React.FC = () => {
 
         {/* Loading */}
         {loading && (
-          <div className="text-center py-12 text-muted-foreground">
+          <div className="text-center py-12 text-muted-foreground animate-pulse">
             Loading auctions...
           </div>
         )}
@@ -170,8 +180,11 @@ const Dashboard: React.FC = () => {
             animate="show"
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           >
-            {filteredAuctions.map((auction, i) => (
-              <AuctionCard key={auction._id} auction={auction} index={i} />
+            {filteredAuctions.map((auction) => (
+              <AuctionCard 
+                key={auction._id} 
+                auction={auction} 
+              />
             ))}
           </motion.div>
         )}
@@ -180,7 +193,12 @@ const Dashboard: React.FC = () => {
         {!loading && filteredAuctions.length === 0 && (
           <div className="card-glass p-12 text-center">
             <Gavel size={40} className="text-muted-foreground mx-auto mb-3" />
-            <p className="font-heading font-semibold mb-1">No auctions found</p>
+            <p className="font-heading font-semibold mb-1">
+              {activeTab === 1 ? "No bids yet" : "No auctions found"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {activeTab === 1 ? "Place a bid to see it here!" : "Check back later or create your first auction."}
+            </p>
           </div>
         )}
       </div>

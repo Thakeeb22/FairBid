@@ -1,13 +1,15 @@
+// src/lib/api.ts - Add wallet header support
 import axios from "axios";
 
-const BASE_URL = "https://fairbid-backend.onrender.com/api"; // adjust if deployed
+const BASE_URL = "https://fairbid-backend.onrender.com/api"; // ✅ Fixed: no trailing spaces
 
-// Auctions
-export const getAuctions = async () => {
-  const { data } = await axios.get(`${BASE_URL}/auctions`);
+// ✅ Updated getAuctions to optionally send wallet address
+export const getAuctions = async (walletAddress?: string) => {
+  const { data } = await axios.get(`${BASE_URL}/auctions`, {
+    headers: walletAddress ? { 'X-Wallet-Address': walletAddress.toLowerCase() } : {},
+  });
   return data;
 };
-
 export const getSingleAuction = async (id: string) => {
   const { data } = await axios.get(`${BASE_URL}/auctions/${id}`);
   return data;

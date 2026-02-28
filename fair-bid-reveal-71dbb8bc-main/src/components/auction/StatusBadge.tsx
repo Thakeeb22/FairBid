@@ -1,14 +1,20 @@
+// src/components/auction/StatusBadge.tsx - FIXED ✅
 import React from "react";
-import { AuctionStatus } from "@/data/mockAuctions";
+
+// ✅ Define type locally (no import needed)
+export type AuctionStatus = "active" | "reveal" | "finalized" | "closed" | (string & {});
 
 const StatusBadge: React.FC<{ status: AuctionStatus }> = ({ status }) => {
-  const config = {
+  // ✅ Handle all possible statuses including "closed"
+  const config: Record<string, { label: string; className: string }> = {
     active: { label: "Active", className: "status-active" },
     reveal: { label: "Reveal Phase", className: "status-reveal" },
     finalized: { label: "Finalized", className: "status-finalized" },
+    closed: { label: "Closed", className: "status-closed" }, // ✅ Added
   };
 
-  const { label, className } = config[status];
+  // ✅ Safe access with fallback
+  const { label, className } = config[status] || config.finalized;
 
   return (
     <span
