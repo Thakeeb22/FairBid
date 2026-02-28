@@ -1,11 +1,10 @@
-// src/app.js - BACKEND API ONLY ✅
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
 
-// ✅ Import models needed for debug endpoints
-const Bid = require("./models/Bid");
+// ✅ ADD THIS IMPORT:
+const Bid = require("./models/Bid"); // ← Required for /api/debug/test-bid
 
 const bidRoutes = require("./routes/bidRoutes");
 const auctionRoutes = require("./routes/auctionRoutes");
@@ -21,23 +20,24 @@ if (!fs.existsSync(uploadsPath)) {
   fs.mkdirSync(uploadsPath, { recursive: true });
   console.log("'uploads folder created'");
 }
+
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// ✅ API Routes
+// Routes
 app.use("/api/auctions/", auctionRoutes);
 app.use("/api/bid", bidRoutes);
-app.use("/api/reveal", revealRoutes);
+app.use("/api/reveal", revealRoutes); // ← Make sure this route is mounted!
 
-// Test/health route
+// Test route
 app.get("/", (req, res) => {
   res.send("FairBid Backend Running");
 });
 
-// Debug test-bid endpoint (for mock testing)
+// Debug test-bid endpoint (now works with Bid imported)
 app.post('/api/debug/test-bid', async (req, res) => {
   const { commitment, bidAmount } = req.body;
   console.log('🧪 Debug test bid:', { commitment, bidAmount });
@@ -59,8 +59,7 @@ app.post('/api/debug/test-bid', async (req, res) => {
   });
 });
 
-// ✅ Run status update job immediately on startup, then every 60 seconds
-updateStatus(); // Run now
-setInterval(autoCloseAuctions, 60000); // Then every 60s
+// Auto-close auctions every 60 seconds
+setInterval(autoCloseAuctions, 60000);
 
 module.exports = app;
