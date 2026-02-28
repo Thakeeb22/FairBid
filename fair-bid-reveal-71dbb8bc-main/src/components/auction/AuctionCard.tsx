@@ -1,12 +1,12 @@
-// src/components/auction/AuctionCard.tsx - Top section ✅
+// src/components/auction/AuctionCard.tsx - FULLY FIXED ✅
 import React from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import StatusBadge from "./StatusBadge"; // ✅ Import the fixed StatusBadge
+import StatusBadge from "./StatusBadge";
 import CountdownTimer from "./CountdownTimer";
 import { Users, TrendingUp } from "lucide-react";
 
-// ✅ Define types locally (no external imports)
+// ✅ Define types locally with flexible string fallback
 export type AuctionPhase = "commit" | "reveal" | "finalized" | "closed" | (string & {});
 export type AuctionStatus = "active" | "reveal" | "finalized" | "closed" | (string & {});
 
@@ -32,17 +32,25 @@ export interface Auction {
 // Map backend -> frontend status
 // -----------------------------
 const mapStatus = (status: AuctionPhase): AuctionStatus => {
-  const s = status?.toLowerCase();
+  const s = String(status || "").toLowerCase();
   if (s === "commit") return "active";
   if (s === "reveal") return "reveal";
-  return "finalized";
+  return "finalized"; // Default for "closed", "finalized", or unknown
 };
 
 // -----------------------------
 // Backend URL - FIXED: No trailing spaces! ✅
 // -----------------------------
-const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL?.trim() || "https://fairbid-backend.onrender.com";
+const BACKEND_URL = (
+  import.meta.env.VITE_BACKEND_URL || 
+  "https://fairbid-backend.onrender.com"
+).trim();
+
+// -----------------------------
+// Reliable placeholder image URL
+// -----------------------------
+const FALLBACK_IMAGE = "https://placehold.co/400x400/EEE/31343C?text=Auction&font=roboto";
+const FALLBACK_IMAGE_ERROR = "https://placehold.co/400x400/EEE/31343C?text=No+Image&font=roboto";
 
 // -----------------------------
 // Props
@@ -57,15 +65,13 @@ interface AuctionCardProps {
 // -----------------------------
 const AuctionCard: React.FC<AuctionCardProps> = ({ auction, index = 0 }) => {
   const navigate = useNavigate();
-
   const endtime = new Date(auction.endtime);
-  const revealTime = new Date(auction.revealTime);
 
   // -----------------------------
-  // CTA Logic - Type-safe switch
+  // CTA Logic - Type-safe with fallback
   // -----------------------------
   const getCtaConfig = () => {
-    const status = auction.status?.toLowerCase();
+    const status = String(auction.status || "").toLowerCase();
     
     switch (status) {
       case "commit":
@@ -80,10 +86,10 @@ const AuctionCard: React.FC<AuctionCardProps> = ({ auction, index = 0 }) => {
           route: `/reveal/${auction._id}`,
           variant: "outline" as const,
         };
-      default: // "finalized", "closed", or unknown
+      default: // "finalized", "closed", or any unknown status
         return {
           label: "View Results",
-          route: `/finalized/${auction._id}`,
+          route: `/auction/${auction._id}`,
           variant: "ghost" as const,
         };
     }
@@ -96,7 +102,7 @@ const AuctionCard: React.FC<AuctionCardProps> = ({ auction, index = 0 }) => {
   // -----------------------------
   const imageSrc = auction.image
     ? `${BACKEND_URL}${auction.image}`
-    : "https://via.placeholder.com/400x400?text=Auction";
+    : FALLBACK_IMAGE;
 
   return (
     <motion.div
@@ -117,8 +123,11 @@ const AuctionCard: React.FC<AuctionCardProps> = ({ auction, index = 0 }) => {
           whileHover={{ scale: 1.06 }}
           transition={{ duration: 0.5 }}
           onError={(e) => {
-            (e.target as HTMLImageElement).src =
-              "https://via.placeholder.com/400x400?text=Auction";
+            // ✅ Double fallback if primary placeholder fails
+            const target = e.target as HTMLImageElement;
+            if (target.src !== FALLBACK_IMAGE_ERROR) {
+              target.src = FALLBACK_IMAGE_ERROR;
+            }
           }}
         />
 
@@ -128,7 +137,7 @@ const AuctionCard: React.FC<AuctionCardProps> = ({ auction, index = 0 }) => {
         </div>
 
         {/* Countdown (only commit phase) */}
-        {auction.status?.toLowerCase() === "commit" && (
+        {String(auction.status || "").toLowerCase() === "commit" && (
           <div className="absolute bottom-3 right-3 bg-background/80 backdrop-blur-sm px-2 py-1 rounded-lg border border-border">
             <CountdownTimer deadline={endtime} compact />
           </div>

@@ -1,3 +1,4 @@
+// src/controllers/auctionController.js - FULLY FIXED ✅
 const Auction = require("../models/Auction");
 const Bid = require("../models/Bid");
 const { commitBid, revealBid, getHighestBid, getHighestBidder } = require("../utils/starknetService");
@@ -25,8 +26,6 @@ const createAuction = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const image = req.file ? `/uploads/${req.file.filename}` : null;
-
     const auction = new Auction({
       title,
       description,
@@ -35,7 +34,8 @@ const createAuction = async (req, res) => {
       endtime: new Date(commitDeadline),
       revealTime: new Date(revealDeadline),
       status: "commit",
-      image:req.file ? `/uploads/${req.file.filename}`:null,
+      // ✅ Fixed: Single clean image assignment
+      image: req.file ? `/uploads/${req.file.filename}` : null,
     });
 
     await auction.save();
@@ -47,9 +47,8 @@ const createAuction = async (req, res) => {
 };
 
 // -----------------------------
-// Get All Auctions
+// Get All Auctions (Enriched with bid stats)
 // -----------------------------
-// src/controllers/auctionController.js - Enhanced getAuctions()
 const getAuctions = async (req, res) => {
   try {
     const auctions = await Auction.find().sort({ createdAt: -1 });
@@ -61,11 +60,9 @@ const getAuctions = async (req, res) => {
       
       return {
         ...auction.toObject(),
-        status: auction.currentPhase, // Virtual field
-        bidCount,                      // NEW: total bids
-        participantCount: uniqueBidders.length, // NEW: unique bidders
-        // Optional: mark if current user has bid (requires auth header)
-        // myBid: req.user ? await Bid.exists({ auctionId: auction._id, bidderWallet: req.user.wallet }) : false
+        status: auction.currentPhase, // ✅ Virtual field
+        bidCount,                      // ✅ Total bids
+        participantCount: uniqueBidders.length, // ✅ Unique bidders
       };
     }));
     
@@ -83,9 +80,10 @@ const getSingleAuction = async (req, res) => {
   try {
     const auction = await Auction.findById(req.params.auctionId);
     if (!auction) return res.status(404).json({ message: "Auction not found" });
+    
     res.json({
       ...auction.toObject(),
-      status: auction.currentPhase,
+      status: auction.currentPhase, // ✅ Virtual field
     });
   } catch (error) {
     console.error("Get single auction error:", error);
@@ -94,9 +92,8 @@ const getSingleAuction = async (req, res) => {
 };
 
 // -----------------------------
-// Place Bid (Commit Phase)
+// Place Bid (Commit Phase) - FIXED ✅
 // -----------------------------
-// src/controllers/auctionController.js - FIXED placeBid()
 const placeBid = async (req, res) => {
   try {
     const { auctionId } = req.params;
@@ -109,32 +106,32 @@ const placeBid = async (req, res) => {
     const auction = await Auction.findById(auctionId);
     if (!auction) return res.status(404).json({ message: "Auction not found" });
 
-    // ✅ FIXED: No trailing space in string comparison
+    // ✅ Use virtual field for phase check
     if (auction.currentPhase !== "commit") {
       return res.status(400).json({ 
         message: `Auction is not in commit phase. Current phase: ${auction.currentPhase}` 
       });
     }
 
-    // ✅ FIXED: Clean BigInt + crypto usage (no spaces!)
+    // ✅ Clean commitment hash (no spaces in keywords!)
     const commitment = BigInt(
       "0x" + crypto.createHash("sha256").update(bidAmount + secret).digest("hex")
     );
 
-    // Commit bid to StarkNet
+    // Commit to StarkNet
     await commitBid(commitment, BigInt(bidAmount));
 
-    // ✅ FIXED: toString() without space
+    // Save bid locally
     const bid = new Bid({
       auctionId,
       bidderWallet,
-      commitment: commitment.toString(),
+      commitment: commitment.toString(), // ✅ No space in toString()
       deposit: bidAmount,
       revealed: false,
     });
     await bid.save();
 
-    // ✅ ADD THIS: Update auction to trigger virtual field recalc
+    // ✅ Update auction to trigger virtual field recalc
     auction.lastBidTime = new Date();
     await auction.save();
 
@@ -144,8 +141,9 @@ const placeBid = async (req, res) => {
     res.status(500).json({ message: "Commit failed: " + error.message });
   }
 };
+
 // -----------------------------
-// Reveal Bid
+// Reveal Bid - FIXED ✅
 // -----------------------------
 const revealBidController = async (req, res) => {
   try {
@@ -159,11 +157,15 @@ const revealBidController = async (req, res) => {
     const auction = await Auction.findById(auctionId);
     if (!auction) return res.status(404).json({ message: "Auction not found" });
 
-    if (new Date() < auction.endtime) return res.status(400).json({ message: "Reveal phase not started" });
-    if (new Date() > auction.revealTime) return res.status(400).json({ message: "Reveal phase ended" });
+    // ✅ Use virtual phase for accurate timing
+    if (auction.currentPhase !== "reveal") {
+      return res.status(400).json({ message: `Reveal phase not active. Current phase: ${auction.currentPhase}` });
+    }
 
+    // Reveal on StarkNet
     await revealBid(BigInt(bidAmount), secret);
 
+    // Update local bid
     const bid = await Bid.findOne({ auctionId, bidderWallet });
     if (!bid) return res.status(404).json({ message: "Bid not found locally" });
 
@@ -173,12 +175,12 @@ const revealBidController = async (req, res) => {
     res.status(200).json({ message: "Bid revealed successfully" });
   } catch (error) {
     console.error("Reveal bid error:", error);
-    res.status(500).json({ message: "Reveal failed" });
+    res.status(500).json({ message: "Reveal failed: " + error.message });
   }
 };
 
 // -----------------------------
-// Get Bid History
+// Get Bid History - FIXED ✅
 // -----------------------------
 const getBidHistory = async (req, res) => {
   try {
@@ -186,7 +188,8 @@ const getBidHistory = async (req, res) => {
     const auction = await Auction.findById(auctionId);
     if (!auction) return res.status(404).json({ message: "Auction not found" });
 
-    if (auction.status === "bidding") {
+    // ✅ Fixed: Check virtual phase, not invalid "bidding" status
+    if (auction.currentPhase !== "reveal" && auction.currentPhase !== "finalized") {
       return res.status(403).json({ message: "Bids are hidden until reveal phase" });
     }
 
@@ -199,7 +202,7 @@ const getBidHistory = async (req, res) => {
 };
 
 // -----------------------------
-// Fairness Metrics
+// Fairness Metrics - FIXED ✅
 // -----------------------------
 const getFairnessMetrics = async (req, res) => {
   try {
@@ -211,8 +214,9 @@ const getFairnessMetrics = async (req, res) => {
     const uniqueBidders = new Set(bids.map(b => b.bidderWallet)).size;
     const totalBids = bids.length;
 
-    const highestBid = await getHighestBid();
-    const highestBidder = await getHighestBidder();
+    // ✅ Fixed: Pass auctionId to helper functions
+    const highestBid = await getHighestBid(auctionId);
+    const highestBidder = await getHighestBidder(auctionId);
 
     res.json({
       totalBids,
@@ -222,7 +226,7 @@ const getFairnessMetrics = async (req, res) => {
     });
   } catch (error) {
     console.error("Get fairness metrics error:", error);
-    res.status(500).json({ message: "Metrics error" });
+    res.status(500).json({ message: "Metrics error: " + error.message });
   }
 };
 
