@@ -1,10 +1,11 @@
+// src/app.js - FULLY FIXED ✅
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
 
-// ✅ ADD THIS IMPORT:
-const Bid = require("./models/Bid"); // ← Required for /api/debug/test-bid
+// ✅ Import models needed for debug endpoints
+const Bid = require("./models/Bid");
 
 const bidRoutes = require("./routes/bidRoutes");
 const auctionRoutes = require("./routes/auctionRoutes");
@@ -20,24 +21,23 @@ if (!fs.existsSync(uploadsPath)) {
   fs.mkdirSync(uploadsPath, { recursive: true });
   console.log("'uploads folder created'");
 }
-
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// ✅ API Routes (must come BEFORE catch-all)
 app.use("/api/auctions/", auctionRoutes);
 app.use("/api/bid", bidRoutes);
-app.use("/api/reveal", revealRoutes); // ← Make sure this route is mounted!
+app.use("/api/reveal", revealRoutes);
 
 // Test route
 app.get("/", (req, res) => {
   res.send("FairBid Backend Running");
 });
 
-// Debug test-bid endpoint (now works with Bid imported)
+// Debug test-bid endpoint (for mock testing)
 app.post('/api/debug/test-bid', async (req, res) => {
   const { commitment, bidAmount } = req.body;
   console.log('🧪 Debug test bid:', { commitment, bidAmount });
@@ -59,7 +59,20 @@ app.post('/api/debug/test-bid', async (req, res) => {
   });
 });
 
-// Auto-close auctions every 60 seconds
-setInterval(autoCloseAuctions, 60000);
+// ✅ SPA Fallback Route - MUST BE LAST, use /* syntax for newer Express
+app.get('/*', (req, res) => {
+  // Skip API and static file routes
+  if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+    return res.status(404).json({ message: 'Not found' });
+  }
+  
+  // Serve frontend index.html for React Router
+  // Adjust path to match your actual frontend build location
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'build', 'index.html'));
+});
+
+// ✅ Run status update job immediately on startup, then every 60 seconds
+updateStatus(); // Run now
+setInterval(autoCloseAuctions, 60000); // Then every 60s
 
 module.exports = app;
