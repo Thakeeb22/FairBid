@@ -1,4 +1,4 @@
-// src/app.js - FULLY FIXED ✅
+// src/app.js - BACKEND API ONLY ✅
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
@@ -27,12 +27,12 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(cors());
 app.use(express.json());
 
-// ✅ API Routes (must come BEFORE catch-all)
+// ✅ API Routes
 app.use("/api/auctions/", auctionRoutes);
 app.use("/api/bid", bidRoutes);
 app.use("/api/reveal", revealRoutes);
 
-// Test route
+// Test/health route
 app.get("/", (req, res) => {
   res.send("FairBid Backend Running");
 });
@@ -57,18 +57,6 @@ app.post('/api/debug/test-bid', async (req, res) => {
     message: 'Test bid saved (mock mode)',
     bidId: bid._id 
   });
-});
-
-// ✅ SPA Fallback Route - MUST BE LAST, use /* syntax for newer Express
-app.get('/*', (req, res) => {
-  // Skip API and static file routes
-  if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
-    return res.status(404).json({ message: 'Not found' });
-  }
-  
-  // Serve frontend index.html for React Router
-  // Adjust path to match your actual frontend build location
-  res.sendFile(path.join(__dirname, '..', 'frontend', 'build', 'index.html'));
 });
 
 // ✅ Run status update job immediately on startup, then every 60 seconds
