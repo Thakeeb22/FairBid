@@ -1,10 +1,12 @@
 FairBid
 Sealed-bid auctions on Starknet — where transparency meets privacy
-�
-�
-�
-�
-�
+
+https://img.shields.io/badge/TypeScript-87%25-3178C6?style=flat-square&logo=typescript
+https://img.shields.io/badge/React-Frontend-61DAFB?style=flat-square&logo=react
+https://img.shields.io/badge/Cairo-Starknet-FF6B4A?style=flat-square&logo=starknet
+https://img.shields.io/badge/Node.js-Backend-339933?style=flat-square&logo=node.js
+https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square
+
 Overview
 FairBid is a decentralized sealed-bid auction platform that solves the fundamental problem of traditional auctions: lack of privacy and fairness.
 By leveraging Starknet’s scalability and cryptographic guarantees, users can commit bids privately and reveal them securely — while maintaining full transparency on-chain.
